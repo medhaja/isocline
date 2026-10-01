@@ -1,0 +1,4 @@
+{
+  "order_id": "ORD-1042",
+  "api_base": "http://host.docker.internal:18099"
+}

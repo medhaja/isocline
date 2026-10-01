@@ -1,0 +1,130 @@
+name: ci
+on: [push, pull_request]
+permissions: { contents: read }
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  api:
+    name: backend lint + tests (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r apps/api/requirements-dev.txt ruff -r workers/python-sandbox/requirements.txt -e sdk/python
+      - name: Lint (correctness rules, ruff.toml)
+        run: ruff check .
+      - name: Unit, integration, product, security
+        run: cd apps/api && pytest -q tests
+      - name: Python sandbox controller
+        run: cd workers/python-sandbox && pip install httpx && pytest -q tests
+      - name: SDK + CLI against a real API app
+        run: cd sdk/python && pytest -q tests
+      - name: SDK / CLI build
+        run: pip install build && python -m build sdk/python --outdir /tmp/dist
+      - name: Workflow schema is up to date
+        run: python scripts/export_schema.py && git diff --exit-code packages/workflow-schema
+
+  live:
+    name: migrations + live stack (PostgreSQL, Redis, Celery)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env: { POSTGRES_USER: isocline, POSTGRES_PASSWORD: isocline, POSTGRES_DB: isocline }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U isocline" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      ISOCLINE_DATABASE_URL: postgresql+asyncpg://isocline:isocline@127.0.0.1:5432/isocline
+      ISOCLINE_REDIS_URL: redis://127.0.0.1:6379/0
+      ISOCLINE_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+      ISOCLINE_ENCRYPTION_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      ISOCLINE_SANDBOX_URL: http://127.0.0.1:8100
+      ISOCLINE_SANDBOX_TOKEN: ci-sandbox-token
+      ISOCLINE_STORAGE_LOCAL_PATH: /tmp/isocline-uploads
+      ISOCLINE_ALLOW_SIGNUP: "true"
+      ISOCLINE_ALLOW_PRIVATE_NETWORK_HOSTS: '["127.0.0.1"]'
+      ISOCLINE_WORKER_STALE_SECONDS: "20"
+      ISOCLINE_RATE_LIMIT_PER_MINUTE: "100000"
+      SANDBOX_MODE: process
+      SANDBOX_ALLOW_UNSAFE_PROCESS: "true"   # CI has no nested Docker for the sandbox; see docs/sandbox.md
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r apps/api/requirements.txt -r workers/python-sandbox/requirements.txt -e sdk/python "mcp>=1.9,<2"
+      - name: Migrations - fresh install, downgrade, upgrade again
+        run: |
+          cd apps/api && alembic upgrade head
+          alembic downgrade base && alembic upgrade head
+          test "$(psql postgresql://isocline:isocline@127.0.0.1:5432/isocline -tAc 'select version_num from alembic_version')" = "$(alembic heads | awk '{print $1}')"
+      - name: Start API, worker, beat, sandbox, example MCP server
+        run: |
+          bash scripts/ci_stack.sh start all
+          (MCP_HOST=127.0.0.1 nohup python examples/07-mcp/server.py > /tmp/mcp.log 2>&1 &)
+          for i in $(seq 60); do curl -fsS localhost:8000/readyz && break; sleep 1; done
+      - name: Durability scenarios (worker SIGKILL, restarts, Redis data loss, waits, checkpoints, sagas)
+        run: >
+          python scripts/durability_check.py --base-url http://127.0.0.1:8000
+          --kill-worker "SIG=KILL bash scripts/ci_stack.sh stop worker" --start-worker "bash scripts/ci_stack.sh start worker"
+          --stop-worker "bash scripts/ci_stack.sh stop worker" --restart-api "bash scripts/ci_stack.sh restart api"
+          --restart-redis "docker restart $(docker ps -q --filter ancestor=redis:7-alpine)"
+          --flush-redis "redis-cli -h 127.0.0.1 flushall || python -c \"import redis; redis.Redis().flushall()\""
+      - name: Product smoke check (SDK, CLI, KB, triggers, examples)
+        run: python scripts/smoke_check.py --base-url http://127.0.0.1:8000
+      - name: Every workflow template runs end to end
+        run: python scripts/template_check.py --base-url http://127.0.0.1:8000
+      - name: Examples run end to end
+        run: |
+          TOKEN=$(python -c "import httpx,uuid;h=httpx.Client(base_url='http://127.0.0.1:8000');h.post('/api/v1/auth/register',json={'email':f'ci{uuid.uuid4().hex[:6]}@example.com','password':'ci-examples-password'});print(h.post('/api/v1/tokens',json={'name':'ci'},headers={'X-CSRF-Token':h.cookies.get('isc_csrf')}).json()['token'])")
+          export ISOCLINE_URL=http://127.0.0.1:8000 ISOCLINE_TOKEN=$TOKEN MCP_URL=http://127.0.0.1:8766/mcp MOCK_BASE=http://127.0.0.1:18099
+          for d in examples/0[13-9]-* examples/10-* examples/production-agent-demo; do echo "== $d"; python examples/run_example.py $d --approve; done
+      - name: Logs on failure
+        if: failure()
+        run: |
+          if ls /tmp/isocline-stack/*.log >/dev/null 2>&1; then tail -n 200 /tmp/isocline-stack/*.log
+          else echo "No service logs: the job failed before the services were started (see the failed step above)."; fi
+
+  web:
+    name: frontend lint + typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: cd apps/web && npm ci && npm run lint && npm run typecheck && npm run build
+
+  docker:
+    name: docker compose config + image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose config -q && docker compose --profile search config -q
+      - run: docker compose build
+
+  security:
+    name: secret scan + dependency licenses + audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: gitleaks (full history)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks git . --redact --no-banner
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: License gate
+        run: |
+          pip install -r apps/api/requirements.txt -r workers/python-sandbox/requirements.txt pip-licenses -e sdk/python
+          (cd apps/web && npm ci)
+          python scripts/license_report.py --check
+      - name: Known vulnerabilities (advisory)
+        continue-on-error: true
+        run: pip install pip-audit && pip-audit -r apps/api/requirements.txt && (cd apps/web && npm audit --omit=dev)

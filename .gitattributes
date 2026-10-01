@@ -1,0 +1,14 @@
+# Normalise line endings in the repository; check out text with the platform default...
+* text=auto
+# ...except files that run inside Linux containers or shells: CRLF breaks them ("/bin/sh^M: bad interpreter").
+*.sh text eol=lf
+*Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+.env.example text eol=lf
+*.py text eol=lf
+# Binary assets
+*.png binary
+*.jpg binary
+*.gif binary
+*.woff2 binary

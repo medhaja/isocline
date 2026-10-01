@@ -1,0 +1,108 @@
+{
+  "schema_version": "2.0",
+  "name": "Durable waits",
+  "description": "A 20 s timer, then an external event matched by order id. Neither wait holds a worker.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "order",
+        "type": "input_json",
+        "name": "Order",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "order"
+        }
+      },
+      {
+        "id": "t",
+        "key": "cooling_off",
+        "type": "wait_timer",
+        "name": "Cooling Off",
+        "position": {
+          "x": 240,
+          "y": 0
+        },
+        "config": {
+          "duration_seconds": 20
+        }
+      },
+      {
+        "id": "w",
+        "key": "payment",
+        "type": "wait_event",
+        "name": "Payment",
+        "position": {
+          "x": 480,
+          "y": 0
+        },
+        "config": {
+          "event_name": "payment.settled",
+          "correlation": "{{order.output.order_id}}",
+          "max_wait_seconds": 3600
+        }
+      },
+      {
+        "id": "a",
+        "key": "confirm",
+        "type": "agent",
+        "name": "Confirm",
+        "position": {
+          "x": 720,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "echo"
+          },
+          "prompt": "Confirm order {{order.output.order_id}}; payment: {{payment.output}}"
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 960,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_t",
+        "source": "in",
+        "target": "t",
+        "source_handle": null
+      },
+      {
+        "id": "e_t_w",
+        "source": "t",
+        "target": "w",
+        "source_handle": null
+      },
+      {
+        "id": "e_w_a",
+        "source": "w",
+        "target": "a",
+        "source_handle": null
+      },
+      {
+        "id": "e_a_out",
+        "source": "a",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": "2.0",
+  "name": "Human approval",
+  "description": "A drafted email waits for a reviewer. The run holds no worker while it waits.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "request",
+        "type": "input_text",
+        "name": "Request",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "request"
+        }
+      },
+      {
+        "id": "draft",
+        "key": "draft",
+        "type": "agent",
+        "name": "Draft",
+        "position": {
+          "x": 240,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "echo"
+          },
+          "prompt": "Draft a customer email: {{request.output}}"
+        }
+      },
+      {
+        "id": "ok",
+        "key": "review",
+        "type": "human_approval",
+        "name": "Review",
+        "position": {
+          "x": 480,
+          "y": 0
+        },
+        "config": {
+          "title": "Approve the customer email",
+          "instructions": "Edit if needed, then approve or reject.",
+          "allow_edit": true
+        }
+      },
+      {
+        "id": "sent",
+        "key": "approved_email",
+        "type": "output_text",
+        "name": "Approved Email",
+        "position": {
+          "x": 720,
+          "y": -80
+        },
+        "config": {}
+      },
+      {
+        "id": "rej",
+        "key": "rejected",
+        "type": "output_text",
+        "name": "Rejected",
+        "position": {
+          "x": 720,
+          "y": 80
+        },
+        "config": {
+          "template": "Rejected by the reviewer."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_draft",
+        "source": "in",
+        "target": "draft",
+        "source_handle": null
+      },
+      {
+        "id": "e_draft_ok",
+        "source": "draft",
+        "target": "ok",
+        "source_handle": null
+      },
+      {
+        "id": "e_ok_sent_approved",
+        "source": "ok",
+        "target": "sent",
+        "source_handle": "approved"
+      },
+      {
+        "id": "e_ok_rej_rejected",
+        "source": "ok",
+        "target": "rej",
+        "source_handle": "rejected"
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

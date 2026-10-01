@@ -1,0 +1,695 @@
+{
+  "$defs": {
+    "CachePolicy": {
+      "properties": {
+        "mode": {
+          "default": "disabled",
+          "enum": [
+            "disabled",
+            "exact",
+            "semantic"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "ttl_seconds": {
+          "default": 86400,
+          "maximum": 7776000,
+          "minimum": 1,
+          "title": "Ttl Seconds",
+          "type": "integer"
+        },
+        "similarity_threshold": {
+          "default": 0.95,
+          "maximum": 1.0,
+          "minimum": 0.5,
+          "title": "Similarity Threshold",
+          "type": "number"
+        }
+      },
+      "title": "CachePolicy",
+      "type": "object"
+    },
+    "Compensation": {
+      "description": "Compensating action for a side effect (e.g. DELETE what a POST created). Never run implicitly.",
+      "properties": {
+        "tool": {
+          "const": "http_request",
+          "default": "http_request",
+          "title": "Tool",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "Compensation",
+      "type": "object"
+    },
+    "Contract": {
+      "description": "Formal node contract. Enforced at compile time (types/capabilities) and at runtime (schemas, cost, time).",
+      "properties": {
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/PortSpec"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "output": {
+          "$ref": "#/$defs/PortSpec"
+        },
+        "capabilities": {
+          "items": {
+            "enum": [
+              "text",
+              "vision",
+              "tool_calling",
+              "structured_output",
+              "reasoning",
+              "large_context",
+              "coding"
+            ],
+            "type": "string"
+          },
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "min_context_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Context Tokens"
+        },
+        "allowed_tools": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Allowed Tools"
+        },
+        "side_effects": {
+          "default": "none",
+          "enum": [
+            "none",
+            "read",
+            "write",
+            "external_write"
+          ],
+          "title": "Side Effects",
+          "type": "string"
+        },
+        "artifact_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Artifact Types",
+          "type": "array"
+        },
+        "max_cost": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost"
+        },
+        "timeout_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Seconds"
+        }
+      },
+      "title": "Contract",
+      "type": "object"
+    },
+    "Edge": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "source_handle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Handle"
+        },
+        "target_handle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Handle"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target"
+      ],
+      "title": "Edge",
+      "type": "object"
+    },
+    "GoalConfig": {
+      "description": "Goal Mode: the harness planner composes allowed agents/tools into a graph, within hard bounds.",
+      "properties": {
+        "goal": {
+          "default": "",
+          "title": "Goal",
+          "type": "string"
+        },
+        "agents": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Agents",
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "planner_model": {
+          "$ref": "#/$defs/ModelRef"
+        },
+        "agent_model": {
+          "$ref": "#/$defs/ModelRef"
+        },
+        "constraints": {
+          "default": "",
+          "title": "Constraints",
+          "type": "string"
+        },
+        "max_agent_calls": {
+          "default": 15,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Max Agent Calls",
+          "type": "integer"
+        },
+        "max_planning_depth": {
+          "default": 8,
+          "maximum": 30,
+          "minimum": 1,
+          "title": "Max Planning Depth",
+          "type": "integer"
+        },
+        "max_replans": {
+          "default": 1,
+          "maximum": 5,
+          "minimum": 0,
+          "title": "Max Replans",
+          "type": "integer"
+        },
+        "output_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Schema"
+        }
+      },
+      "title": "GoalConfig",
+      "type": "object"
+    },
+    "Harness": {
+      "properties": {
+        "cache": {
+          "$ref": "#/$defs/CachePolicy"
+        },
+        "sla": {
+          "$ref": "#/$defs/SlaPolicy"
+        },
+        "recovery": {
+          "items": {
+            "$ref": "#/$defs/RecoveryRule"
+          },
+          "title": "Recovery",
+          "type": "array"
+        },
+        "checkpoint": {
+          "default": false,
+          "title": "Checkpoint",
+          "type": "boolean"
+        },
+        "compensation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Compensation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "resource_class": {
+          "default": "standard",
+          "enum": [
+            "standard",
+            "cpu_heavy",
+            "memory_heavy",
+            "sandbox",
+            "long_running"
+          ],
+          "title": "Resource Class",
+          "type": "string"
+        }
+      },
+      "title": "Harness",
+      "type": "object"
+    },
+    "ModelRef": {
+      "properties": {
+        "provider": {
+          "default": "",
+          "title": "Provider",
+          "type": "string"
+        },
+        "model": {
+          "default": "",
+          "title": "Model",
+          "type": "string"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        }
+      },
+      "title": "ModelRef",
+      "type": "object"
+    },
+    "Node": {
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Position"
+        },
+        "parent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Id"
+        },
+        "config": {
+          "additionalProperties": true,
+          "title": "Config",
+          "type": "object"
+        },
+        "contract": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Contract"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "harness": {
+          "$ref": "#/$defs/Harness"
+        }
+      },
+      "required": [
+        "id",
+        "key",
+        "type"
+      ],
+      "title": "Node",
+      "type": "object"
+    },
+    "PortSpec": {
+      "properties": {
+        "name": {
+          "default": "in",
+          "pattern": "^[a-z][a-z0-9_]{0,47}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "default": "Any",
+          "title": "Type",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "PortSpec",
+      "type": "object"
+    },
+    "Position": {
+      "properties": {
+        "x": {
+          "default": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "default": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "title": "Position",
+      "type": "object"
+    },
+    "RecoveryRule": {
+      "properties": {
+        "when": {
+          "items": {
+            "type": "string"
+          },
+          "title": "When",
+          "type": "array"
+        },
+        "attempts_gte": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempts Gte"
+        },
+        "actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Actions",
+          "type": "array"
+        }
+      },
+      "title": "RecoveryRule",
+      "type": "object"
+    },
+    "SlaPolicy": {
+      "properties": {
+        "max_latency_ms": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Latency Ms"
+        },
+        "max_cost": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost"
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Tokens"
+        },
+        "max_attempts": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Attempts"
+        },
+        "on_breach": {
+          "default": "fail",
+          "enum": [
+            "fallback",
+            "degrade",
+            "fail",
+            "alert"
+          ],
+          "title": "On Breach",
+          "type": "string"
+        }
+      },
+      "title": "SlaPolicy",
+      "type": "object"
+    },
+    "WorkflowSettings": {
+      "properties": {
+        "max_runtime_seconds": {
+          "default": 600,
+          "minimum": 1,
+          "title": "Max Runtime Seconds",
+          "type": "integer"
+        },
+        "max_llm_calls": {
+          "default": 50,
+          "minimum": 1,
+          "title": "Max Llm Calls",
+          "type": "integer"
+        },
+        "max_tool_calls": {
+          "default": 100,
+          "minimum": 0,
+          "title": "Max Tool Calls",
+          "type": "integer"
+        },
+        "max_loop_iterations": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Max Loop Iterations",
+          "type": "integer"
+        },
+        "max_retries_per_node": {
+          "default": 3,
+          "minimum": 0,
+          "title": "Max Retries Per Node",
+          "type": "integer"
+        },
+        "max_parallel_nodes": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Max Parallel Nodes",
+          "type": "integer"
+        },
+        "max_cost": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost"
+        },
+        "max_total_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Total Tokens"
+        },
+        "variables": {
+          "additionalProperties": true,
+          "title": "Variables",
+          "type": "object"
+        },
+        "workflow_memory_enabled": {
+          "default": false,
+          "title": "Workflow Memory Enabled",
+          "type": "boolean"
+        },
+        "compensation_enabled": {
+          "default": false,
+          "title": "Compensation Enabled",
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "graph",
+          "enum": [
+            "graph",
+            "goal"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "goal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GoalConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "WorkflowSettings",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "default": "2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/Node"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/Edge"
+      },
+      "title": "Edges",
+      "type": "array"
+    },
+    "settings": {
+      "$ref": "#/$defs/WorkflowSettings"
+    }
+  },
+  "title": "WorkflowGraph",
+  "type": "object",
+  "$id": "https://isocline.dev/schema/workflow-graph-2.0.json"
+}

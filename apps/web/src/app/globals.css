@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Isocline design tokens (space-separated RGB so Tailwind can apply opacity). */
+:root {
+  --canvas: 247 248 246;  --paper: 255 255 255;  --line: 221 226 224;  --shadow: 30 35 40;
+  --ink-950: 17 21 24;  --ink-900: 30 35 40;  --ink-800: 44 51 57;  --ink-700: 61 69 76;  --ink-600: 79 88 96;
+  --ink-500: 91 102 112;  --ink-400: 104 114 123;  --ink-300: 156 165 171;  --ink-200: 221 226 224;  --ink-100: 236 240 238;
+  --accent-50: 232 245 243;  --accent-100: 207 234 230;  --accent-200: 158 211 203;
+  --accent-500: 18 124 116;  --accent-600: 14 104 97;  --accent-700: 11 84 79;
+  --state-running: 18 124 116;  --state-completed: 59 122 63;  --state-failed: 194 65 45;
+  --state-waiting: 201 138 27;  --state-skipped: 156 165 171;  --state-queued: 104 114 123;
+  --contour: 18 124 116;  --warn: 138 93 0;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --canvas: 21 26 30;  --paper: 28 34 39;  --line: 46 55 62;  --shadow: 0 0 0;
+  --ink-950: 244 247 246;  --ink-900: 228 233 231;  --ink-800: 211 218 216;  --ink-700: 190 198 197;  --ink-600: 164 174 175;
+  --ink-500: 146 157 160;  --ink-400: 129 140 144;  --ink-300: 92 103 108;  --ink-200: 52 62 69;  --ink-100: 37 45 51;
+  --accent-50: 20 48 46;  --accent-100: 25 66 62;  --accent-200: 34 96 90;
+  --accent-500: 56 178 166;  --accent-600: 82 196 184;  --accent-700: 128 214 205;
+  --state-running: 56 178 166;  --state-completed: 104 178 108;  --state-failed: 240 110 88;
+  --state-waiting: 230 172 70;  --state-skipped: 120 131 136;  --state-queued: 129 140 144;
+  --contour: 56 178 166;  --warn: 230 172 70;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body { @apply bg-canvas font-sans text-[14px] text-ink-900 antialiased; letter-spacing: -0.003em; font-feature-settings: "ss01", "cv11"; }
+h1, h2, h3 { letter-spacing: -0.018em; font-weight: 600; }
+::selection { background: rgb(var(--accent-100)); }
+*:focus-visible { outline: 2px solid rgb(var(--accent-500)); outline-offset: 2px; }
+code, kbd, pre { font-feature-settings: "calt" 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* The canvas: a faint contour-map backdrop (isoclines) that appears only on an empty workflow. */
+.contour-backdrop {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420' viewBox='0 0 640 420' fill='none' stroke='%23127C74' stroke-opacity='.16' stroke-width='1'%3E%3Cpath d='M-20 300c90-60 160-70 240-40s150 40 230-20 150-70 210-40'/%3E%3Cpath d='M-20 270c95-62 170-75 250-45s145 35 220-25 150-75 210-45'/%3E%3Cpath d='M-20 240c100-64 178-80 258-50s140 30 212-30 150-80 210-50'/%3E%3Cpath d='M-20 210c104-66 186-85 266-55s135 25 204-35 150-85 210-55'/%3E%3Cpath d='M-20 180c108-68 194-90 274-60s130 20 196-40 150-90 210-60'/%3E%3Cpath d='M210 130c40-30 90-35 120-10s20 60-25 70-120-25-95-60z'/%3E%3Cpath d='M235 132c28-20 62-22 82-6s12 40-18 46-80-16-64-40z'/%3E%3C/svg%3E");
+  background-size: 640px 420px; background-repeat: repeat;
+}
+[data-theme="dark"] .contour-backdrop { filter: brightness(1.6); opacity: .8; }
+
+/* React Flow theme */
+.react-flow__attribution { display: none; }
+.react-flow__background { color: rgb(var(--ink-300) / .55); }
+.react-flow__edge-path { stroke: rgb(var(--ink-300)); stroke-width: 1.5; }
+.react-flow__edge.isc-bad .react-flow__edge-path { stroke: rgb(var(--state-failed)); stroke-dasharray: 5 3; }
+.react-flow__edge-textbg { fill: rgb(var(--paper)); }
+.react-flow__edge-text { font: 500 10px "JetBrains Mono Variable", monospace; fill: rgb(var(--ink-500)); }
+.react-flow__edge.selected .react-flow__edge-path { stroke: rgb(var(--accent-500)); stroke-width: 2; }
+/* Work in motion: edges into running nodes flow like contour lines being traced. */
+.react-flow__edge.isc-active .react-flow__edge-path { stroke: rgb(var(--state-running)); stroke-width: 2; stroke-dasharray: 2 6; stroke-linecap: round; animation: isc-flow .9s linear infinite; }
+.react-flow__edge.isc-done .react-flow__edge-path { stroke: rgb(var(--state-completed) / .8); stroke-width: 1.75; }
+.react-flow__edge.isc-dim .react-flow__edge-path { stroke: rgb(var(--ink-200)); }
+@keyframes isc-flow { to { stroke-dashoffset: -16; } }
+.react-flow__handle { width: 9px; height: 9px; border: 2px solid rgb(var(--paper)); background: rgb(var(--ink-300)); transition: transform .12s, background .12s; }
+.react-flow__handle:hover { background: rgb(var(--accent-500)); transform: scale(1.25); }
+.react-flow__connection-path { stroke: rgb(var(--accent-500)); stroke-width: 2; }
+.react-flow__minimap { border-radius: 10px; border: 1px solid rgb(var(--line)); overflow: hidden; background: rgb(var(--paper)); }
+.react-flow__minimap-mask { fill: rgb(var(--canvas) / .7); }
+.react-flow__controls { box-shadow: 0 1px 0 rgb(var(--shadow) / .05); border: 1px solid rgb(var(--line)); border-radius: 10px; overflow: hidden; }
+.react-flow__controls-button { border-bottom: 1px solid rgb(var(--line)); background: rgb(var(--paper)); fill: rgb(var(--ink-600)); }
+.react-flow__controls-button:hover { background: rgb(var(--canvas)); }
+.react-flow__controls-button svg { fill: rgb(var(--ink-600)); }
+.react-flow__selection { background: rgb(var(--accent-500) / .06); border: 1px solid rgb(var(--accent-500) / .5); }
+.react-flow__node.selected > div { outline: 2px solid rgb(var(--accent-500)); outline-offset: 2px; border-radius: 12px; }
+
+.prose-report h1 { @apply mb-2 mt-4 text-lg font-semibold; }
+.prose-report h2 { @apply mb-1.5 mt-4 text-base font-semibold; }
+.prose-report h3 { @apply mb-1 mt-3 text-sm font-semibold; }
+.prose-report p { @apply my-2 leading-relaxed; }
+.prose-report ul { @apply my-2 list-disc pl-5; }
+.prose-report ol { @apply my-2 list-decimal pl-5; }
+.prose-report code { @apply rounded bg-canvas px-1 font-mono text-xs; }
+.prose-report a { @apply text-accent-600 underline; }

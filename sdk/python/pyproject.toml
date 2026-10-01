@@ -1,0 +1,17 @@
+[project]
+name = "isocline-sdk"
+version = "3.3.0"
+license = { text = "Apache-2.0" }
+description = "Python SDK and CLI for the Isocline harness"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27"]
+
+[project.scripts]
+isocline = "isocline_sdk.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["isocline_sdk*"]

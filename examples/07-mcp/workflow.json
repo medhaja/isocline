@@ -1,0 +1,71 @@
+{
+  "schema_version": "2.0",
+  "name": "MCP tool",
+  "description": "An agent calls lookup_account on the example MCP server (examples/07-mcp/server.py) registered as 'crm'.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "company",
+        "type": "input_text",
+        "name": "Company",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "company"
+        }
+      },
+      {
+        "id": "a",
+        "key": "account",
+        "type": "agent",
+        "name": "Account",
+        "position": {
+          "x": 260,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "tool-user"
+          },
+          "prompt": "{{company.output}}",
+          "tools": [
+            "mcp:crm/lookup_account"
+          ]
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 520,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_a",
+        "source": "in",
+        "target": "a",
+        "source_handle": null
+      },
+      {
+        "id": "e_a_out",
+        "source": "a",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

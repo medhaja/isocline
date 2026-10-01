@@ -1,0 +1,269 @@
+{
+  "schema_version": "2.0",
+  "name": "Production agent demo",
+  "description": "Research -> parallel financial + risk analysis (typed JSON) -> merge (checkpoint) -> human approval -> report.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "company",
+        "type": "input_text",
+        "name": "Company",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "company",
+          "label": "Company to assess"
+        }
+      },
+      {
+        "id": "research",
+        "key": "research",
+        "type": "agent",
+        "name": "Research",
+        "position": {
+          "x": 240,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "ollama",
+            "model": "llama3.2"
+          },
+          "prompt": "Research {{company.output}}: business model, recent news, competitors.",
+          "instructions": "You are a careful research analyst. Cite uncertainty."
+        },
+        "contract": {
+          "output": {
+            "name": "out",
+            "type": "Text"
+          }
+        }
+      },
+      {
+        "id": "fan",
+        "key": "analyses",
+        "type": "parallel",
+        "name": "Analyses",
+        "position": {
+          "x": 480,
+          "y": 0
+        },
+        "config": {}
+      },
+      {
+        "id": "fin",
+        "key": "financial",
+        "type": "agent",
+        "name": "Financial",
+        "position": {
+          "x": 720,
+          "y": -140
+        },
+        "config": {
+          "model": {
+            "provider": "openai",
+            "model": "gpt-4o-mini"
+          },
+          "prompt": "Financial assessment of {{company.output}} based on:\n{{research.output}}",
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "revenue_trend": {
+                "type": "string"
+              },
+              "margin_view": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "revenue_trend",
+              "score"
+            ]
+          }
+        },
+        "contract": {
+          "output": {
+            "name": "out",
+            "type": "JSON"
+          }
+        }
+      },
+      {
+        "id": "risk",
+        "key": "risk",
+        "type": "agent",
+        "name": "Risk",
+        "position": {
+          "x": 720,
+          "y": 140
+        },
+        "config": {
+          "model": {
+            "provider": "anthropic",
+            "model": "claude-3-5-haiku-latest"
+          },
+          "prompt": "Risk assessment of {{company.output}} based on:\n{{research.output}}",
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "top_risks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "severity": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "top_risks",
+              "score"
+            ]
+          }
+        },
+        "contract": {
+          "output": {
+            "name": "out",
+            "type": "JSON"
+          }
+        }
+      },
+      {
+        "id": "merge",
+        "key": "assessment",
+        "type": "merge",
+        "name": "Assessment",
+        "position": {
+          "x": 960,
+          "y": 0
+        },
+        "config": {
+          "strategy": "named"
+        },
+        "harness": {
+          "checkpoint": true
+        }
+      },
+      {
+        "id": "ok",
+        "key": "sign_off",
+        "type": "human_approval",
+        "name": "Sign Off",
+        "position": {
+          "x": 1200,
+          "y": 0
+        },
+        "config": {
+          "title": "Sign off the investment memo",
+          "content": "{{assessment.output}}",
+          "allow_edit": true,
+          "max_wait_seconds": 604800,
+          "timeout_action": "fail"
+        }
+      },
+      {
+        "id": "writer",
+        "key": "memo",
+        "type": "agent",
+        "name": "Memo",
+        "position": {
+          "x": 1440,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "ollama",
+            "model": "llama3.2"
+          },
+          "prompt": "Write an investment memo for {{company.output}} from:\n{{assessment.output}}"
+        }
+      },
+      {
+        "id": "out",
+        "key": "report",
+        "type": "output_report",
+        "name": "Report",
+        "position": {
+          "x": 1680,
+          "y": 0
+        },
+        "config": {
+          "format": "markdown",
+          "filename": "investment-memo.md"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_research",
+        "source": "in",
+        "target": "research",
+        "source_handle": null
+      },
+      {
+        "id": "e_research_fan",
+        "source": "research",
+        "target": "fan",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_fin",
+        "source": "fan",
+        "target": "fin",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_risk",
+        "source": "fan",
+        "target": "risk",
+        "source_handle": null
+      },
+      {
+        "id": "e_fin_merge",
+        "source": "fin",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_risk_merge",
+        "source": "risk",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_merge_ok",
+        "source": "merge",
+        "target": "ok",
+        "source_handle": null
+      },
+      {
+        "id": "e_ok_writer_approved",
+        "source": "ok",
+        "target": "writer",
+        "source_handle": "approved"
+      },
+      {
+        "id": "e_writer_out",
+        "source": "writer",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600,
+      "max_llm_calls": 20,
+      "max_cost": 2.0
+    }
+  }
+}

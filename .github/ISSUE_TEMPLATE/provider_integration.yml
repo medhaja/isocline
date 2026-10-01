@@ -1,0 +1,14 @@
+name: Model provider integration
+description: Add or improve a model / embedding provider
+labels: [provider, good first issue]
+body:
+  - type: input
+    id: provider
+    attributes: { label: Provider, placeholder: "e.g. Mistral, Bedrock, vLLM" }
+    validations: { required: true }
+  - type: dropdown
+    id: api
+    attributes: { label: API style, options: [OpenAI-compatible (may already work via openai_compatible), Native API, Embeddings only] }
+  - type: textarea
+    id: details
+    attributes: { label: Details, description: "Auth, tool calling, structured output, streaming, env variables. See docs/contributing/adding-a-provider.md." }

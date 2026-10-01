@@ -1,0 +1,7 @@
+{
+  "name": "@isocline/workflow-schema",
+  "version": "2.0.0",
+  "description": "Isocline workflow schema v2.0: JSON Schemas (generated from the backend models) and TypeScript types",
+  "main": "types.ts",
+  "files": ["*.schema.json", "types.ts", "README.md"]
+}

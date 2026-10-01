@@ -1,0 +1,14 @@
+name: Tool integration
+description: Add a built-in tool or an MCP integration example
+labels: [tool, good first issue]
+body:
+  - type: input
+    id: tool
+    attributes: { label: Tool / service }
+    validations: { required: true }
+  - type: dropdown
+    id: kind
+    attributes: { label: Kind, options: [Built-in tool, MCP server example, Document loader] }
+  - type: textarea
+    id: details
+    attributes: { label: Details, description: "Inputs, outputs, side effects (read / write / external_write), credentials, network access. See docs/contributing/adding-a-tool.md." }

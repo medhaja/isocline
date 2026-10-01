@@ -1,0 +1,2253 @@
+{
+  "schema_version": "2.0",
+  "node_types": [
+    "agent",
+    "condition",
+    "group",
+    "human_approval",
+    "input_chat",
+    "input_file",
+    "input_json",
+    "input_text",
+    "input_url",
+    "loop",
+    "merge",
+    "note",
+    "output_api",
+    "output_file",
+    "output_json",
+    "output_report",
+    "output_text",
+    "parallel",
+    "retry",
+    "router",
+    "subworkflow",
+    "tool_calculator",
+    "tool_file_reader",
+    "tool_http",
+    "tool_json",
+    "tool_python",
+    "tool_vector_search",
+    "tool_web_search",
+    "transform",
+    "trigger_event",
+    "trigger_file",
+    "trigger_schedule",
+    "trigger_webhook",
+    "wait_event",
+    "wait_timer",
+    "wait_webhook"
+  ],
+  "configs": {
+    "agent": {
+      "$defs": {
+        "ContextConfig": {
+          "properties": {
+            "include_run_input": {
+              "default": true,
+              "title": "Include Run Input",
+              "type": "boolean"
+            },
+            "include_direct_upstream": {
+              "default": true,
+              "title": "Include Direct Upstream",
+              "type": "boolean"
+            },
+            "max_context_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Context Tokens"
+            },
+            "truncation": {
+              "default": "truncate_middle",
+              "enum": [
+                "truncate_end",
+                "truncate_middle",
+                "error"
+              ],
+              "title": "Truncation",
+              "type": "string"
+            },
+            "priority": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Priority",
+              "type": "array"
+            },
+            "sources": {
+              "additionalProperties": {
+                "$ref": "#/$defs/ContextSourcePolicy"
+              },
+              "title": "Sources",
+              "type": "object"
+            },
+            "upstream_keys": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Upstream Keys"
+            },
+            "retrieval_top_k": {
+              "default": 5,
+              "maximum": 50,
+              "minimum": 0,
+              "title": "Retrieval Top K",
+              "type": "integer"
+            },
+            "history_window": {
+              "default": 10,
+              "maximum": 200,
+              "minimum": 0,
+              "title": "History Window",
+              "type": "integer"
+            },
+            "artifact_mode": {
+              "default": "reference",
+              "enum": [
+                "reference",
+                "extract"
+              ],
+              "title": "Artifact Mode",
+              "type": "string"
+            },
+            "artifact_max_tokens": {
+              "default": 4000,
+              "minimum": 0,
+              "title": "Artifact Max Tokens",
+              "type": "integer"
+            }
+          },
+          "title": "ContextConfig",
+          "type": "object"
+        },
+        "ContextSourcePolicy": {
+          "properties": {
+            "strategy": {
+              "default": "truncate",
+              "enum": [
+                "keep",
+                "truncate",
+                "summarize",
+                "extract",
+                "drop"
+              ],
+              "title": "Strategy",
+              "type": "string"
+            },
+            "max_tokens": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Tokens"
+            }
+          },
+          "title": "ContextSourcePolicy",
+          "type": "object"
+        },
+        "MemoryConfig": {
+          "properties": {
+            "read_workflow_memory": {
+              "default": false,
+              "title": "Read Workflow Memory",
+              "type": "boolean"
+            },
+            "write_workflow_memory": {
+              "default": false,
+              "title": "Write Workflow Memory",
+              "type": "boolean"
+            },
+            "memory_key": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Memory Key"
+            }
+          },
+          "title": "MemoryConfig",
+          "type": "object"
+        },
+        "ModelParams": {
+          "additionalProperties": false,
+          "description": "Only parameters supported by the selected model are sent; see providers.capabilities.",
+          "properties": {
+            "temperature": {
+              "anyOf": [
+                {
+                  "maximum": 2,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Temperature"
+            },
+            "top_p": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Top P"
+            },
+            "top_k": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Top K"
+            },
+            "max_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 200000,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Tokens"
+            },
+            "seed": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Seed"
+            },
+            "frequency_penalty": {
+              "anyOf": [
+                {
+                  "maximum": 2,
+                  "minimum": -2,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Frequency Penalty"
+            },
+            "presence_penalty": {
+              "anyOf": [
+                {
+                  "maximum": 2,
+                  "minimum": -2,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Presence Penalty"
+            },
+            "stop": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Stop"
+            },
+            "reasoning_effort": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Reasoning Effort"
+            }
+          },
+          "title": "ModelParams",
+          "type": "object"
+        },
+        "ModelRef": {
+          "properties": {
+            "provider": {
+              "default": "",
+              "title": "Provider",
+              "type": "string"
+            },
+            "model": {
+              "default": "",
+              "title": "Model",
+              "type": "string"
+            },
+            "credential_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Credential Id"
+            }
+          },
+          "title": "ModelRef",
+          "type": "object"
+        },
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        },
+        "RoutingConfig": {
+          "description": "Constraints for AUTO model selection (enforced by the router, recorded per decision).",
+          "properties": {
+            "objective": {
+              "default": "balanced",
+              "enum": [
+                "quality",
+                "cost",
+                "latency",
+                "balanced"
+              ],
+              "title": "Objective",
+              "type": "string"
+            },
+            "allowed_providers": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Allowed Providers",
+              "type": "array"
+            },
+            "max_cost_per_call": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Cost Per Call"
+            },
+            "max_latency_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Max Latency Seconds"
+            },
+            "min_eval_score": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Min Eval Score"
+            }
+          },
+          "title": "RoutingConfig",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "template": {
+          "default": "general",
+          "title": "Template",
+          "type": "string"
+        },
+        "library_agent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Library Agent Id"
+        },
+        "agent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Id"
+        },
+        "role": {
+          "default": "",
+          "title": "Role",
+          "type": "string"
+        },
+        "instructions": {
+          "default": "",
+          "title": "Instructions",
+          "type": "string"
+        },
+        "prompt": {
+          "default": "",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelRef"
+        },
+        "params": {
+          "$ref": "#/$defs/ModelParams"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "knowledge_base_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Knowledge Base Ids",
+          "type": "array"
+        },
+        "memory": {
+          "$ref": "#/$defs/MemoryConfig"
+        },
+        "context": {
+          "$ref": "#/$defs/ContextConfig"
+        },
+        "output_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output Schema"
+        },
+        "timeout_seconds": {
+          "default": 120,
+          "maximum": 3600,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "fallbacks": {
+          "items": {
+            "$ref": "#/$defs/ModelRef"
+          },
+          "title": "Fallbacks",
+          "type": "array"
+        },
+        "max_tool_iterations": {
+          "default": 8,
+          "maximum": 50,
+          "minimum": 0,
+          "title": "Max Tool Iterations",
+          "type": "integer"
+        },
+        "reasoning_summary": {
+          "default": false,
+          "title": "Reasoning Summary",
+          "type": "boolean"
+        },
+        "routing": {
+          "$ref": "#/$defs/RoutingConfig"
+        }
+      },
+      "title": "AgentConfig",
+      "type": "object"
+    },
+    "condition": {
+      "$defs": {
+        "Rule": {
+          "properties": {
+            "left": {
+              "title": "Left",
+              "type": "string"
+            },
+            "operator": {
+              "default": "==",
+              "enum": [
+                "==",
+                "!=",
+                ">",
+                ">=",
+                "<",
+                "<=",
+                "contains",
+                "exists",
+                "not_exists"
+              ],
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "default": null,
+              "title": "Right"
+            }
+          },
+          "required": [
+            "left"
+          ],
+          "title": "Rule",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/Rule"
+        }
+      },
+      "title": "ConditionConfig",
+      "type": "object"
+    },
+    "human_approval": {
+      "properties": {
+        "title": {
+          "default": "Approval required",
+          "title": "Title",
+          "type": "string"
+        },
+        "instructions": {
+          "default": "",
+          "title": "Instructions",
+          "type": "string"
+        },
+        "content": {
+          "default": "",
+          "title": "Content",
+          "type": "string"
+        },
+        "allow_edit": {
+          "default": true,
+          "title": "Allow Edit",
+          "type": "boolean"
+        },
+        "timeout_hours": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout Hours"
+        },
+        "max_wait_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wait Seconds"
+        },
+        "timeout_action": {
+          "default": "edge",
+          "enum": [
+            "edge",
+            "fail",
+            "continue"
+          ],
+          "title": "Timeout Action",
+          "type": "string"
+        }
+      },
+      "title": "ApprovalConfig",
+      "type": "object"
+    },
+    "input_chat": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "default": "value",
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        },
+        "as_artifact": {
+          "default": false,
+          "title": "As Artifact",
+          "type": "boolean"
+        }
+      },
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "input_file": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "default": "value",
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        },
+        "as_artifact": {
+          "default": false,
+          "title": "As Artifact",
+          "type": "boolean"
+        }
+      },
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "input_json": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "default": "value",
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        },
+        "as_artifact": {
+          "default": false,
+          "title": "As Artifact",
+          "type": "boolean"
+        }
+      },
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "input_text": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "default": "value",
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        },
+        "as_artifact": {
+          "default": false,
+          "title": "As Artifact",
+          "type": "boolean"
+        }
+      },
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "input_url": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "default": "value",
+          "title": "Field",
+          "type": "string"
+        },
+        "label": {
+          "default": "",
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "title": "Default"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        },
+        "as_artifact": {
+          "default": false,
+          "title": "As Artifact",
+          "type": "boolean"
+        }
+      },
+      "title": "InputConfig",
+      "type": "object"
+    },
+    "loop": {
+      "$defs": {
+        "Rule": {
+          "properties": {
+            "left": {
+              "title": "Left",
+              "type": "string"
+            },
+            "operator": {
+              "default": "==",
+              "enum": [
+                "==",
+                "!=",
+                ">",
+                ">=",
+                "<",
+                "<=",
+                "contains",
+                "exists",
+                "not_exists"
+              ],
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "default": null,
+              "title": "Right"
+            }
+          },
+          "required": [
+            "left"
+          ],
+          "title": "Rule",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "collection": {
+          "default": "",
+          "title": "Collection",
+          "type": "string"
+        },
+        "max_iterations": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Max Iterations",
+          "type": "integer"
+        },
+        "stop_condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "LoopConfig",
+      "type": "object"
+    },
+    "merge": {
+      "properties": {
+        "strategy": {
+          "default": "named",
+          "enum": [
+            "object",
+            "array",
+            "named"
+          ],
+          "title": "Strategy",
+          "type": "string"
+        },
+        "wait_for": {
+          "default": "all_active",
+          "enum": [
+            "all_active",
+            "any"
+          ],
+          "title": "Wait For",
+          "type": "string"
+        }
+      },
+      "title": "MergeConfig",
+      "type": "object"
+    },
+    "output_api": {
+      "additionalProperties": true,
+      "properties": {
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "enum": [
+            "text",
+            "json",
+            "markdown",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "output_file": {
+      "additionalProperties": true,
+      "properties": {
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "enum": [
+            "text",
+            "json",
+            "markdown",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "output_json": {
+      "additionalProperties": true,
+      "properties": {
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "enum": [
+            "text",
+            "json",
+            "markdown",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "output_report": {
+      "additionalProperties": true,
+      "properties": {
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "enum": [
+            "text",
+            "json",
+            "markdown",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "output_text": {
+      "additionalProperties": true,
+      "properties": {
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "format": {
+          "default": "text",
+          "enum": [
+            "text",
+            "json",
+            "markdown",
+            "file"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename"
+        },
+        "json_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Json Schema"
+        }
+      },
+      "title": "OutputConfig",
+      "type": "object"
+    },
+    "retry": {
+      "$defs": {
+        "Rule": {
+          "properties": {
+            "left": {
+              "title": "Left",
+              "type": "string"
+            },
+            "operator": {
+              "default": "==",
+              "enum": [
+                "==",
+                "!=",
+                ">",
+                ">=",
+                "<",
+                "<=",
+                "contains",
+                "exists",
+                "not_exists"
+              ],
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "default": null,
+              "title": "Right"
+            }
+          },
+          "required": [
+            "left"
+          ],
+          "title": "Rule",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "collection": {
+          "default": "",
+          "title": "Collection",
+          "type": "string"
+        },
+        "max_iterations": {
+          "default": 10,
+          "minimum": 1,
+          "title": "Max Iterations",
+          "type": "integer"
+        },
+        "stop_condition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "LoopConfig",
+      "type": "object"
+    },
+    "router": {
+      "$defs": {
+        "Route": {
+          "properties": {
+            "left": {
+              "title": "Left",
+              "type": "string"
+            },
+            "operator": {
+              "default": "==",
+              "enum": [
+                "==",
+                "!=",
+                ">",
+                ">=",
+                "<",
+                "<=",
+                "contains",
+                "exists",
+                "not_exists"
+              ],
+              "title": "Operator",
+              "type": "string"
+            },
+            "right": {
+              "default": null,
+              "title": "Right"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "left",
+            "name"
+          ],
+          "title": "Route",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/Route"
+          },
+          "title": "Routes",
+          "type": "array"
+        }
+      },
+      "title": "RouterConfig",
+      "type": "object"
+    },
+    "subworkflow": {
+      "properties": {
+        "workflow_id": {
+          "default": "",
+          "title": "Workflow Id",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "input_mapping": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Input Mapping",
+          "type": "object"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        }
+      },
+      "title": "SubworkflowConfig",
+      "type": "object"
+    },
+    "tool_calculator": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_file_reader": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_http": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_json": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_python": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_vector_search": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "tool_web_search": {
+      "$defs": {
+        "RetryPolicy": {
+          "properties": {
+            "retries": {
+              "default": 0,
+              "maximum": 10,
+              "minimum": 0,
+              "title": "Retries",
+              "type": "integer"
+            },
+            "backoff": {
+              "default": "exponential",
+              "enum": [
+                "none",
+                "fixed",
+                "exponential"
+              ],
+              "title": "Backoff",
+              "type": "string"
+            },
+            "base_delay_seconds": {
+              "default": 1.0,
+              "maximum": 60,
+              "minimum": 0,
+              "title": "Base Delay Seconds",
+              "type": "number"
+            }
+          },
+          "title": "RetryPolicy",
+          "type": "object"
+        }
+      },
+      "additionalProperties": true,
+      "properties": {
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "credential_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Credential Id"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "on_failure": {
+          "default": "stop",
+          "enum": [
+            "stop",
+            "continue",
+            "skip",
+            "route_error"
+          ],
+          "title": "On Failure",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 900,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "title": "ToolNodeConfig",
+      "type": "object"
+    },
+    "transform": {
+      "properties": {
+        "mode": {
+          "default": "template",
+          "enum": [
+            "template",
+            "select",
+            "json_parse",
+            "to_text",
+            "mapping",
+            "csv_to_table"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "template": {
+          "default": "",
+          "title": "Template",
+          "type": "string"
+        },
+        "path": {
+          "default": "",
+          "title": "Path",
+          "type": "string"
+        },
+        "mapping": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Mapping",
+          "type": "object"
+        }
+      },
+      "title": "TransformConfig",
+      "type": "object"
+    },
+    "trigger_event": {
+      "additionalProperties": true,
+      "description": "Entry node for triggered runs. Outputs the trigger payload (run input).",
+      "properties": {
+        "payload_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Schema"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "TriggerNodeConfig",
+      "type": "object"
+    },
+    "trigger_file": {
+      "additionalProperties": true,
+      "description": "Entry node for triggered runs. Outputs the trigger payload (run input).",
+      "properties": {
+        "payload_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Schema"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "TriggerNodeConfig",
+      "type": "object"
+    },
+    "trigger_schedule": {
+      "additionalProperties": true,
+      "description": "Entry node for triggered runs. Outputs the trigger payload (run input).",
+      "properties": {
+        "payload_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Schema"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "TriggerNodeConfig",
+      "type": "object"
+    },
+    "trigger_webhook": {
+      "additionalProperties": true,
+      "description": "Entry node for triggered runs. Outputs the trigger payload (run input).",
+      "properties": {
+        "payload_schema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Schema"
+        },
+        "description": {
+          "default": "",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "title": "TriggerNodeConfig",
+      "type": "object"
+    },
+    "wait_event": {
+      "additionalProperties": true,
+      "properties": {
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "until": {
+          "default": "",
+          "title": "Until",
+          "type": "string"
+        },
+        "event_name": {
+          "default": "",
+          "title": "Event Name",
+          "type": "string"
+        },
+        "correlation": {
+          "default": "",
+          "title": "Correlation",
+          "type": "string"
+        },
+        "max_wait_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wait Seconds"
+        },
+        "timeout_action": {
+          "default": "edge",
+          "enum": [
+            "edge",
+            "fail",
+            "continue"
+          ],
+          "title": "Timeout Action",
+          "type": "string"
+        }
+      },
+      "title": "WaitConfig",
+      "type": "object"
+    },
+    "wait_timer": {
+      "additionalProperties": true,
+      "properties": {
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "until": {
+          "default": "",
+          "title": "Until",
+          "type": "string"
+        },
+        "event_name": {
+          "default": "",
+          "title": "Event Name",
+          "type": "string"
+        },
+        "correlation": {
+          "default": "",
+          "title": "Correlation",
+          "type": "string"
+        },
+        "max_wait_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wait Seconds"
+        },
+        "timeout_action": {
+          "default": "edge",
+          "enum": [
+            "edge",
+            "fail",
+            "continue"
+          ],
+          "title": "Timeout Action",
+          "type": "string"
+        }
+      },
+      "title": "WaitConfig",
+      "type": "object"
+    },
+    "wait_webhook": {
+      "additionalProperties": true,
+      "properties": {
+        "duration_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Seconds"
+        },
+        "until": {
+          "default": "",
+          "title": "Until",
+          "type": "string"
+        },
+        "event_name": {
+          "default": "",
+          "title": "Event Name",
+          "type": "string"
+        },
+        "correlation": {
+          "default": "",
+          "title": "Correlation",
+          "type": "string"
+        },
+        "max_wait_seconds": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Wait Seconds"
+        },
+        "timeout_action": {
+          "default": "edge",
+          "enum": [
+            "edge",
+            "fail",
+            "continue"
+          ],
+          "title": "Timeout Action",
+          "type": "string"
+        }
+      },
+      "title": "WaitConfig",
+      "type": "object"
+    }
+  }
+}

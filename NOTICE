@@ -1,0 +1,9 @@
+Isocline
+Copyright 2026 The Isocline Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It depends on third-party open-source packages that are installed from their public registries at build time and are
+not redistributed in this repository. Their licenses are listed in docs/dependency-licenses.md.
+
+The web UI bundles the Geist and Geist Mono typefaces (geist npm package), licensed under the SIL Open Font License 1.1.

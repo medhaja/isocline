@@ -1,0 +1,71 @@
+{
+  "schema_version": "2.0",
+  "name": "Knowledge base Q&A",
+  "description": "Retrieval-augmented answer over the 'Acme handbook' knowledge base (created by the runner).",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "question",
+        "type": "input_text",
+        "name": "Question",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "question"
+        }
+      },
+      {
+        "id": "a",
+        "key": "answer",
+        "type": "agent",
+        "name": "Answer",
+        "position": {
+          "x": 260,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "echo"
+          },
+          "prompt": "Answer using only the retrieved context: {{question.output}}",
+          "knowledge_base_ids": [
+            "__KB_ACME_HANDBOOK__"
+          ]
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 520,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_a",
+        "source": "in",
+        "target": "a",
+        "source_handle": null
+      },
+      {
+        "id": "e_a_out",
+        "source": "a",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

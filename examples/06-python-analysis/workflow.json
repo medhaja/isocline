@@ -1,0 +1,70 @@
+{
+  "schema_version": "2.0",
+  "name": "Python analysis",
+  "description": "Statistics in the Python sandbox, with a CSV artifact written to out/.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "sales",
+        "type": "input_json",
+        "name": "Sales",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "sales"
+        }
+      },
+      {
+        "id": "py",
+        "key": "analysis",
+        "type": "tool_python",
+        "name": "Analysis",
+        "position": {
+          "x": 260,
+          "y": 0
+        },
+        "config": {
+          "arguments": {
+            "code": "import statistics, csv\nrows = INPUTS['sales']\nvals = [r['amount'] for r in rows]\nprint({'total': sum(vals), 'mean': statistics.mean(vals), 'max': max(vals)})\nwith open('out/by_region.csv', 'w', newline='') as f:\n    w = csv.writer(f)\n    w.writerow(['region', 'amount'])\n    for r in rows:\n        w.writerow([r['region'], r['amount']])\n",
+            "inputs": {
+              "sales": "{{sales.output}}"
+            }
+          },
+          "timeout_seconds": 60
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_json",
+        "name": "Result",
+        "position": {
+          "x": 520,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_py",
+        "source": "in",
+        "target": "py",
+        "source_handle": null
+      },
+      {
+        "id": "e_py_out",
+        "source": "py",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

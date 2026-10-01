@@ -1,0 +1,158 @@
+# Isocline — self-hosted stack.
+#
+#   cp .env.example .env
+#   docker compose up --build
+#
+# Web UI: http://localhost:3000     API docs: http://localhost:8000/api/docs
+#
+# Ports are published on 127.0.0.1 only. To expose Isocline on a network, put it behind a TLS reverse proxy and read
+# docs/self-hosting.md first (sign-up policy, secrets, the sandbox's Docker socket).
+#
+# Optional profiles:   docker compose --profile search up   (bundled SearXNG for the web search tool)
+
+x-api-env: &api-env
+  ISOCLINE_ENV: ${ISOCLINE_ENV:-development}
+  ISOCLINE_DATABASE_URL: postgresql+asyncpg://isocline:${POSTGRES_PASSWORD:-isocline}@postgres:5432/isocline
+  ISOCLINE_REDIS_URL: redis://redis:6379/0
+  # Empty values are filled from the generated secrets file (see init-secrets). Values in .env win.
+  ISOCLINE_SECRET_KEY: ${ISOCLINE_SECRET_KEY:-}
+  ISOCLINE_ENCRYPTION_KEY: ${ISOCLINE_ENCRYPTION_KEY:-}
+  ISOCLINE_SANDBOX_TOKEN: ${SANDBOX_TOKEN:-}
+  ISOCLINE_SECRETS_FILE: /run/isocline/secrets.env
+  ISOCLINE_PUBLIC_BASE_URL: ${ISOCLINE_PUBLIC_BASE_URL:-http://localhost:3000}
+  ISOCLINE_CORS_ORIGINS: '["${ISOCLINE_PUBLIC_BASE_URL:-http://localhost:3000}"]'
+  ISOCLINE_COOKIE_SECURE: ${ISOCLINE_COOKIE_SECURE:-false}
+  ISOCLINE_ALLOW_SIGNUP: ${ISOCLINE_ALLOW_SIGNUP:-false}
+  ISOCLINE_BOOTSTRAP_ADMIN_EMAIL: ${ISOCLINE_BOOTSTRAP_ADMIN_EMAIL:-}
+  ISOCLINE_BOOTSTRAP_ADMIN_PASSWORD: ${ISOCLINE_BOOTSTRAP_ADMIN_PASSWORD:-}
+  ISOCLINE_SANDBOX_URL: http://python-sandbox:8100
+  ISOCLINE_SEARCH_PROVIDER: ${ISOCLINE_SEARCH_PROVIDER:-searxng}
+  ISOCLINE_SEARXNG_URL: http://searxng:8080
+  ISOCLINE_EMBEDDING_PROVIDER: ${ISOCLINE_EMBEDDING_PROVIDER:-hashing}
+  ISOCLINE_EMBEDDING_BASE_URL: ${ISOCLINE_EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  ISOCLINE_EMBEDDING_API_KEY: ${ISOCLINE_EMBEDDING_API_KEY:-}
+  ISOCLINE_EMBEDDING_MODEL: ${ISOCLINE_EMBEDDING_MODEL:-text-embedding-3-small}
+  ISOCLINE_ENABLE_TEST_PROVIDER: ${ISOCLINE_ENABLE_TEST_PROVIDER:-true}
+  ISOCLINE_STORAGE_LOCAL_PATH: /data/uploads
+  ISOCLINE_SMTP_HOST: ${ISOCLINE_SMTP_HOST:-}
+  ISOCLINE_SMTP_USER: ${ISOCLINE_SMTP_USER:-}
+  ISOCLINE_SMTP_PASSWORD: ${ISOCLINE_SMTP_PASSWORD:-}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  # Model providers (bring your own key). Stored workspace credentials take precedence over these.
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  OPENAI_COMPATIBLE_BASE_URL: ${OPENAI_COMPATIBLE_BASE_URL:-}
+  OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY:-}
+  TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+  BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+
+x-api-service: &api-service
+  # No shared `image:` tag: api, worker and beat each build (identical layers, cached) under their own name, so parallel
+  # builds never race on one tag (Docker Desktop's containerd image store rejects that with "already exists").
+  build: { context: ., dockerfile: infrastructure/docker/api.Dockerfile }
+  environment: *api-env
+  volumes: ["uploads:/data/uploads", "secrets:/run/isocline:ro"]
+  extra_hosts: ["host.docker.internal:host-gateway"]  # reach Ollama running on the host (Linux)
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: isocline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-isocline}
+      POSTGRES_DB: isocline
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U isocline"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 20 }
+    restart: unless-stopped
+
+  # One-shot: generates installation secrets into the `secrets` volume on first start (kept afterwards).
+  init-secrets:
+    build: { context: ., dockerfile: infrastructure/docker/api.Dockerfile }
+    entrypoint: ["python", "-m", "isocline.core.bootstrap_secrets", "/secrets/secrets.env"]
+    command: []
+    volumes: ["secrets:/secrets"]
+    restart: "no"
+
+  api:
+    <<: *api-service
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      init-secrets: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  # Consumes all three queues: runs (execution), ingest (documents), maintenance (sweeper, waits, schedules).
+  worker:
+    <<: *api-service
+    command: ["celery", "-A", "isocline.worker.celery_app", "worker", "-Q", "runs,ingest,maintenance", "--concurrency", "${WORKER_CONCURRENCY:-4}", "--loglevel", "INFO"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck: { disable: true }
+
+  beat:
+    <<: *api-service
+    command: ["celery", "-A", "isocline.worker.celery_app", "beat", "--loglevel", "INFO", "--schedule", "/tmp/celerybeat-schedule"]
+    volumes: ["secrets:/run/isocline:ro"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck: { disable: true }
+
+  web:
+    build: { context: ., dockerfile: infrastructure/docker/web.Dockerfile, args: { API_INTERNAL_URL: "http://api:8000" } }
+    environment: { API_INTERNAL_URL: "http://api:8000" }
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+  # Builds the image that user code runs in. Not a long-running service.
+  sandbox-runner:
+    build: { context: workers/python-sandbox, dockerfile: runner.Dockerfile }
+    image: isocline-sandbox-runner:latest
+    entrypoint: ["true"]
+    restart: "no"
+
+  python-sandbox:
+    build: { context: ., dockerfile: infrastructure/docker/sandbox.Dockerfile }
+    environment:
+      SANDBOX_TOKEN: ${SANDBOX_TOKEN:-}
+      ISOCLINE_SECRETS_FILE: /run/isocline/secrets.env
+      SANDBOX_MODE: docker
+      SANDBOX_IMAGE: isocline-sandbox-runner:latest
+      SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-}   # "runsc" if gVisor is installed on the host
+      SANDBOX_MEMORY: ${SANDBOX_MEMORY:-256m}
+      SANDBOX_CPUS: ${SANDBOX_CPUS:-0.5}
+    # SECURITY: the sandbox controller starts one container per execution, so it needs a Docker daemon. Access to
+    # the host's Docker socket is equivalent to root on the host. This is acceptable on a developer machine; on a
+    # shared server use a dedicated VM, or point DOCKER_HOST at an isolated rootless daemon. See docs/sandbox.md.
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock", "secrets:/run/isocline:ro"]
+    depends_on:
+      init-secrets: { condition: service_completed_successfully }
+      sandbox-runner: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  searxng:
+    profiles: ["search"]
+    image: searxng/searxng:latest   # unpinned upstream image; pin a digest for reproducible deployments
+    environment: { SEARXNG_SECRET: "${SEARXNG_SECRET:-change-me-searxng}" }
+    volumes: ["./infrastructure/searxng/settings.yml:/etc/searxng/settings.yml:ro"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  secrets:

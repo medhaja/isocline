@@ -1,0 +1,16 @@
+{
+  "sales": [
+    {
+      "region": "North",
+      "amount": 1200
+    },
+    {
+      "region": "South",
+      "amount": 800
+    },
+    {
+      "region": "West",
+      "amount": 1500
+    }
+  ]
+}

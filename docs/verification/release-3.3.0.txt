@@ -1,0 +1,32 @@
+Verification of the 3.3.0 release commit (2026-09-30).
+Environment: Ubuntu 24.04, Python 3.12.3, PostgreSQL 16.15 + pgvector 0.6.0, Redis 7.0.15, Celery 5.6.3 (prefork, 2
+processes) + beat, uvicorn API. Services were started as local processes with scripts/ci_stack.sh (Docker was not
+available); the Python sandbox ran in its development process mode. Test provider: local_test.
+
+Automated suites
+  apps/api tests (unit, integration, product, security, templates)   233 passed
+  workers/python-sandbox tests                                        10 passed
+  sdk/python tests                                                     4 passed
+  ruff, next lint, tsc --noEmit, next build                          clean
+  gitleaks (full history of this repository)                          no leaks found
+
+Database
+  alembic upgrade head on an empty PostgreSQL 16 database: 54 tables, HNSW index on document_chunks.embedding,
+  append-only trigger on audit_events. Upgrading a database created at 0001 through 0002_remove_deployments yields
+  column-for-column the same schema as a fresh install.
+
+Live stack
+  scripts/smoke_check.py         9/9   SDK, CLI, export/import, node playground, Python sandbox, knowledge base,
+                                       signed webhook (replay and bad signature rejected), schedule trigger,
+                                       example validation
+  scripts/template_check.py     53/53  every workflow template created via the API, run with its sample input,
+                                       human approvals approved, all completed
+  scripts/durability_check.py   10/10  A sequential; B parallel (branches overlapped: 3.6 s vs >= 6 s serial);
+                                       C worker SIGKILL mid-node -> recovered, completed upstream node not re-run;
+                                       D/E/F approval survives API + worker + Redis restart; G timer survives Redis
+                                       FLUSHALL; H callback + duplicate ignored; I lost queue message re-enqueued from
+                                       PostgreSQL; J checkpoint restore; K rerun from node (1 model call); L saga
+                                       compensation in reverse order
+
+Not verified here: `docker compose up` itself and the sandbox in Docker mode (no Docker in this environment; CI builds
+the images and runs these live checks on every push).

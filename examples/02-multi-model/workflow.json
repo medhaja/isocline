@@ -1,0 +1,162 @@
+{
+  "schema_version": "2.0",
+  "name": "Multi-model comparison",
+  "description": "The same question answered by OpenAI, Anthropic and a local Ollama model in parallel.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "question",
+        "type": "input_text",
+        "name": "Question",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "question"
+        }
+      },
+      {
+        "id": "fan",
+        "key": "fan",
+        "type": "parallel",
+        "name": "Fan",
+        "position": {
+          "x": 220,
+          "y": 0
+        },
+        "config": {}
+      },
+      {
+        "id": "gpt",
+        "key": "openai_answer",
+        "type": "agent",
+        "name": "Openai Answer",
+        "position": {
+          "x": 440,
+          "y": -160
+        },
+        "config": {
+          "model": {
+            "provider": "openai",
+            "model": "gpt-4o-mini"
+          },
+          "prompt": "{{question.output}}"
+        }
+      },
+      {
+        "id": "claude",
+        "key": "anthropic_answer",
+        "type": "agent",
+        "name": "Anthropic Answer",
+        "position": {
+          "x": 440,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "anthropic",
+            "model": "claude-3-5-haiku-latest"
+          },
+          "prompt": "{{question.output}}"
+        }
+      },
+      {
+        "id": "llama",
+        "key": "ollama_answer",
+        "type": "agent",
+        "name": "Ollama Answer",
+        "position": {
+          "x": 440,
+          "y": 160
+        },
+        "config": {
+          "model": {
+            "provider": "ollama",
+            "model": "llama3.2"
+          },
+          "prompt": "{{question.output}}"
+        }
+      },
+      {
+        "id": "merge",
+        "key": "answers",
+        "type": "merge",
+        "name": "Answers",
+        "position": {
+          "x": 680,
+          "y": 0
+        },
+        "config": {
+          "strategy": "named"
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_json",
+        "name": "Result",
+        "position": {
+          "x": 900,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_fan",
+        "source": "in",
+        "target": "fan",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_gpt",
+        "source": "fan",
+        "target": "gpt",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_claude",
+        "source": "fan",
+        "target": "claude",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_llama",
+        "source": "fan",
+        "target": "llama",
+        "source_handle": null
+      },
+      {
+        "id": "e_gpt_merge",
+        "source": "gpt",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_claude_merge",
+        "source": "claude",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_llama_merge",
+        "source": "llama",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_merge_out",
+        "source": "merge",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

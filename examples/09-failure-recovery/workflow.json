@@ -1,0 +1,95 @@
+{
+  "schema_version": "2.0",
+  "name": "Failure recovery",
+  "description": "The primary model always fails; recovery rules retry, then fall back to another model.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "topic",
+        "type": "input_text",
+        "name": "Topic",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "topic"
+        }
+      },
+      {
+        "id": "a",
+        "key": "resilient",
+        "type": "agent",
+        "name": "Resilient",
+        "position": {
+          "x": 260,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "fail"
+          },
+          "prompt": "Summarize {{topic.output}}",
+          "fallbacks": [
+            {
+              "provider": "local_test",
+              "model": "echo"
+            }
+          ]
+        },
+        "harness": {
+          "recovery": [
+            {
+              "when": [
+                "any"
+              ],
+              "actions": [
+                "retry"
+              ]
+            },
+            {
+              "when": [
+                "any"
+              ],
+              "attempts_gte": 2,
+              "actions": [
+                "fallback"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 520,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_a",
+        "source": "in",
+        "target": "a",
+        "source_handle": null
+      },
+      {
+        "id": "e_a_out",
+        "source": "a",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

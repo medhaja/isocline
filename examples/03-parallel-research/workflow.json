@@ -1,0 +1,185 @@
+{
+  "schema_version": "2.0",
+  "name": "Parallel research",
+  "description": "Three researchers run concurrently (each takes ~2 s with the test provider); the merge waits for all of them.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "company",
+        "type": "input_text",
+        "name": "Company",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "company"
+        }
+      },
+      {
+        "id": "fan",
+        "key": "fan",
+        "type": "parallel",
+        "name": "Fan",
+        "position": {
+          "x": 220,
+          "y": 0
+        },
+        "config": {}
+      },
+      {
+        "id": "m",
+        "key": "market",
+        "type": "agent",
+        "name": "Market",
+        "position": {
+          "x": 440,
+          "y": -160
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "slow-2"
+          },
+          "prompt": "Market position of {{company.output}}"
+        }
+      },
+      {
+        "id": "p",
+        "key": "product",
+        "type": "agent",
+        "name": "Product",
+        "position": {
+          "x": 440,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "slow-2"
+          },
+          "prompt": "Product lineup of {{company.output}}"
+        }
+      },
+      {
+        "id": "t",
+        "key": "team",
+        "type": "agent",
+        "name": "Team",
+        "position": {
+          "x": 440,
+          "y": 160
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "slow-2"
+          },
+          "prompt": "Leadership team of {{company.output}}"
+        }
+      },
+      {
+        "id": "merge",
+        "key": "findings",
+        "type": "merge",
+        "name": "Findings",
+        "position": {
+          "x": 680,
+          "y": 0
+        },
+        "config": {
+          "strategy": "named"
+        }
+      },
+      {
+        "id": "w",
+        "key": "writer",
+        "type": "agent",
+        "name": "Writer",
+        "position": {
+          "x": 900,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "echo"
+          },
+          "prompt": "Combine into one report:\n{{findings.output}}"
+        }
+      },
+      {
+        "id": "out",
+        "key": "report",
+        "type": "output_report",
+        "name": "Report",
+        "position": {
+          "x": 1120,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_fan",
+        "source": "in",
+        "target": "fan",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_m",
+        "source": "fan",
+        "target": "m",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_p",
+        "source": "fan",
+        "target": "p",
+        "source_handle": null
+      },
+      {
+        "id": "e_fan_t",
+        "source": "fan",
+        "target": "t",
+        "source_handle": null
+      },
+      {
+        "id": "e_m_merge",
+        "source": "m",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_p_merge",
+        "source": "p",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_t_merge",
+        "source": "t",
+        "target": "merge",
+        "source_handle": null
+      },
+      {
+        "id": "e_merge_w",
+        "source": "merge",
+        "target": "w",
+        "source_handle": null
+      },
+      {
+        "id": "e_w_out",
+        "source": "w",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

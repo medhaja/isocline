@@ -1,0 +1,183 @@
+{
+  "schema_version": "2.0",
+  "name": "Saga compensation",
+  "description": "Reserve -> charge -> ship, then a failing step. Registered compensations run in reverse order.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "order",
+        "type": "input_text",
+        "name": "Order",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "order_id"
+        }
+      },
+      {
+        "id": "reserve",
+        "key": "reserve",
+        "type": "tool_http",
+        "name": "Reserve",
+        "position": {
+          "x": 220,
+          "y": 0
+        },
+        "config": {
+          "arguments": {
+            "method": "POST",
+            "url": "{{input.api_base}}/reserve",
+            "body": {
+              "order": "{{input.order_id}}"
+            }
+          }
+        },
+        "contract": {
+          "side_effects": "external_write"
+        },
+        "harness": {
+          "compensation": {
+            "tool": "http_request",
+            "arguments": {
+              "method": "DELETE",
+              "url": "{{input.api_base}}/reserve"
+            },
+            "description": "undo reserve"
+          }
+        }
+      },
+      {
+        "id": "charge",
+        "key": "charge",
+        "type": "tool_http",
+        "name": "Charge",
+        "position": {
+          "x": 440,
+          "y": 0
+        },
+        "config": {
+          "arguments": {
+            "method": "POST",
+            "url": "{{input.api_base}}/charge",
+            "body": {
+              "order": "{{input.order_id}}"
+            }
+          }
+        },
+        "contract": {
+          "side_effects": "external_write"
+        },
+        "harness": {
+          "compensation": {
+            "tool": "http_request",
+            "arguments": {
+              "method": "DELETE",
+              "url": "{{input.api_base}}/charge"
+            },
+            "description": "undo charge"
+          }
+        }
+      },
+      {
+        "id": "ship",
+        "key": "ship",
+        "type": "tool_http",
+        "name": "Ship",
+        "position": {
+          "x": 660,
+          "y": 0
+        },
+        "config": {
+          "arguments": {
+            "method": "POST",
+            "url": "{{input.api_base}}/ship",
+            "body": {
+              "order": "{{input.order_id}}"
+            }
+          }
+        },
+        "contract": {
+          "side_effects": "external_write"
+        },
+        "harness": {
+          "compensation": {
+            "tool": "http_request",
+            "arguments": {
+              "method": "DELETE",
+              "url": "{{input.api_base}}/ship"
+            },
+            "description": "undo ship"
+          }
+        }
+      },
+      {
+        "id": "notify",
+        "key": "notify",
+        "type": "agent",
+        "name": "Notify",
+        "position": {
+          "x": 880,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "fail"
+          },
+          "prompt": "Notify customer about {{input.order_id}}"
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 1100,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_reserve",
+        "source": "in",
+        "target": "reserve",
+        "source_handle": null
+      },
+      {
+        "id": "e_reserve_charge",
+        "source": "reserve",
+        "target": "charge",
+        "source_handle": null
+      },
+      {
+        "id": "e_charge_ship",
+        "source": "charge",
+        "target": "ship",
+        "source_handle": null
+      },
+      {
+        "id": "e_ship_notify",
+        "source": "ship",
+        "target": "notify",
+        "source_handle": null
+      },
+      {
+        "id": "e_notify_out",
+        "source": "notify",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600,
+      "compensation_enabled": true
+    }
+  }
+}

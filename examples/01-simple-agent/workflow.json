@@ -1,0 +1,70 @@
+{
+  "schema_version": "2.0",
+  "name": "Simple agent",
+  "description": "One input, one agent, one output. Runs with the deterministic local test provider.",
+  "graph": {
+    "schema_version": "1.0",
+    "nodes": [
+      {
+        "id": "in",
+        "key": "company",
+        "type": "input_text",
+        "name": "Company",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "config": {
+          "field": "company",
+          "label": "Company"
+        }
+      },
+      {
+        "id": "research",
+        "key": "research",
+        "type": "agent",
+        "name": "Research",
+        "position": {
+          "x": 260,
+          "y": 0
+        },
+        "config": {
+          "model": {
+            "provider": "local_test",
+            "model": "echo"
+          },
+          "prompt": "Write a short profile of {{company.output}}.",
+          "instructions": "You are a concise business researcher."
+        }
+      },
+      {
+        "id": "out",
+        "key": "result",
+        "type": "output_text",
+        "name": "Result",
+        "position": {
+          "x": 520,
+          "y": 0
+        },
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_in_research",
+        "source": "in",
+        "target": "research",
+        "source_handle": null
+      },
+      {
+        "id": "e_research_out",
+        "source": "research",
+        "target": "out",
+        "source_handle": null
+      }
+    ],
+    "settings": {
+      "max_runtime_seconds": 600
+    }
+  }
+}

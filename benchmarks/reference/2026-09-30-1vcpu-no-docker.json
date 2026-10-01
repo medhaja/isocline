@@ -1,0 +1,119 @@
+{
+  "environment": {
+    "timestamp": "2026-09-30T06:00:39.682168+00:00",
+    "python": "3.12.3",
+    "os": "Linux-6.18.44-fc-v50-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpus": 1,
+    "cpu_model": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "mem_gb": 3.9,
+    "isocline_database_url": "127.0.0.1:5432/isocline_live",
+    "worker_concurrency": "2",
+    "bench_db_version": "PostgreSQL 16.15 + pgvector 0.6.0",
+    "bench_redis_version": "Redis 7.0.15",
+    "bench_notes": "processes started directly (no Docker); Celery prefork concurrency 2; single uvicorn API worker; hashing embeddings",
+    "base_url": "http://127.0.0.1:8000"
+  },
+  "results": [
+    {
+      "name": "compile+validate 10-node graph",
+      "samples": 30,
+      "unit": "ms",
+      "p50": 0.394,
+      "p95": 0.539,
+      "p99": 0.916,
+      "mean": 0.424,
+      "note": "parse, structural validation, compile; in-process"
+    },
+    {
+      "name": "compile+validate 100-node graph",
+      "samples": 30,
+      "unit": "ms",
+      "p50": 4.074,
+      "p95": 4.522,
+      "p99": 5.636,
+      "mean": 3.603,
+      "note": "parse, structural validation, compile; in-process"
+    },
+    {
+      "name": "compile+validate 500-node graph",
+      "samples": 10,
+      "unit": "ms",
+      "p50": 17.694,
+      "p95": 35.404,
+      "p99": 38.327,
+      "mean": 21.019,
+      "note": "parse, structural validation, compile; in-process"
+    },
+    {
+      "name": "queue pickup (run created -> execution started)",
+      "samples": 30,
+      "unit": "ms",
+      "p50": 46.815,
+      "p95": 65.35,
+      "p99": 141.055,
+      "mean": 52.98,
+      "note": "API -> Redis -> Celery worker -> claim"
+    },
+    {
+      "name": "3-node run end-to-end, client observed",
+      "samples": 30,
+      "unit": "ms",
+      "p50": 472.327,
+      "p95": 569.879,
+      "p99": 585.062,
+      "mean": 481.749,
+      "note": "includes 20 ms client polling granularity"
+    },
+    {
+      "name": "per-node overhead, 50-node sequential chain",
+      "samples": 6,
+      "unit": "ms",
+      "p50": 101.1,
+      "p95": 110.349,
+      "p99": 111.618,
+      "mean": 102.744,
+      "note": "execution time / nodes; each node persists state + events"
+    },
+    {
+      "name": "32-branch parallel fan-out + merge, execution time",
+      "samples": 6,
+      "unit": "ms",
+      "p50": 5410.342,
+      "p95": 5858.858,
+      "p99": 5956.3,
+      "mean": 5434.048,
+      "note": "max_parallel_nodes=32"
+    },
+    {
+      "name": "durable continuation (approve -> run completed)",
+      "samples": 15,
+      "unit": "ms",
+      "p50": 396.264,
+      "p95": 443.842,
+      "p99": 460.921,
+      "mean": 386.172,
+      "note": "resume from PostgreSQL on a new task"
+    },
+    {
+      "name": "HTTP tool node (local no-op server)",
+      "samples": 30,
+      "unit": "ms",
+      "p50": 162.593,
+      "p95": 202.876,
+      "p99": 250.005,
+      "mean": 166.086,
+      "note": "node started -> finished"
+    },
+    {
+      "name": "knowledge search API (200 chunks)",
+      "samples": 60,
+      "unit": "ms",
+      "p50": 14.223,
+      "p95": 25.526,
+      "p99": 75.269,
+      "mean": 17.188,
+      "note": "HTTP round trip incl. auth; embedding provider as configured"
+    }
+  ]
+}
