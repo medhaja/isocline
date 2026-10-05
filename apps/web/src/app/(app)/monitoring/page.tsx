@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { useWorkspace } from "@/lib/session";
 import type { Project } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export default function MonitoringHome() {
   const { workspace } = useWorkspace();
@@ -29,7 +30,7 @@ export default function MonitoringHome() {
         <section className="space-y-2">
           <h2 className="text-sm font-semibold">Projects</h2>
           <ul className="divide-y divide-line rounded-lg border border-line bg-paper shadow-card">
-            {projects.data?.map((p) => <li key={p.id}><Link href={`/projects/${p.id}?tab=monitoring`} className="flex justify-between px-4 py-2.5 text-sm hover:bg-canvas/60">{p.name}<Icon name="ChevronRight" className="text-ink-300" /></Link></li>)}
+            {projects.data?.map((p) => <li key={p.id}><Link href={routes.project(p.id, "monitoring")} className="flex justify-between px-4 py-2.5 text-sm hover:bg-canvas/60">{p.name}<Icon name="ChevronRight" className="text-ink-300" /></Link></li>)}
           </ul>
         </section>
       </div>

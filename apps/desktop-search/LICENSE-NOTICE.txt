@@ -1,0 +1,16 @@
+Local web search in Isocline Desktop
+====================================
+
+IsoclineSearch.exe is a separate program that provides the Web Search tool when no Tavily or Brave key is
+configured. It is built from:
+
+  * SearXNG, Copyright (c) the SearXNG developers, licensed under the GNU Affero General Public License v3.0
+    or later. Source: https://github.com/searxng/searxng (the exact commit is listed in the release notes and in
+    packaging/desktop/build.ps1 as SEARXNG_REF).
+  * isocline_search.py (apps/desktop-search in the Isocline repository), licensed AGPL-3.0-or-later.
+
+You may obtain, modify and redistribute the complete corresponding source of IsoclineSearch.exe under the terms
+of the AGPL from the locations above. Isocline itself (Isocline.exe) is licensed under the Apache License 2.0 and
+communicates with IsoclineSearch.exe only over HTTP on this computer.
+
+Full license texts: https://www.gnu.org/licenses/agpl-3.0.txt and https://www.apache.org/licenses/LICENSE-2.0

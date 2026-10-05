@@ -33,6 +33,10 @@ async def validate_environment(db: AsyncSession, graph: WorkflowGraph, workspace
     for c in creds:
         by_provider.setdefault(c.provider, []).append(c)
     names = {c.name for c in creds} | {c.provider for c in creds}
+    # Tool secrets can also come from the environment (TAVILY_API_KEY, BRAVE_API_KEY), as the Web Search tool resolves
+    # them at run time; preflight must not block a run that would work.
+    from isocline.providers.env_credentials import TOOL_SECRET_ENV, tool_secret_env
+    names |= {name for name in TOOL_SECRET_ENV if tool_secret_env(name)}
     kbs = {str(k) for k in (await db.execute(select(KnowledgeBase.id).where(KnowledgeBase.project_id == project_id))).scalars().all()}
     mcp_grants = [(n, t) for n in graph.nodes if n.type == "agent" for t in (n.config.get("tools") or []) if str(t).startswith("mcp:")]
     if mcp_grants:
@@ -90,7 +94,12 @@ async def validate_environment(db: AsyncSession, graph: WorkflowGraph, workspace
             continue
         if "web_search" in tools and s.search_provider in ("tavily", "brave") and s.search_provider not in names:
             issues.append(Issue("error", "search_credential_missing", f"Web Search credential missing (add a '{s.search_provider}' secret)", node_id=n.id))
-        if "python" in tools and not s.sandbox_url:
+        if "python" in tools and s.desktop:
+            from isocline.desktop import sandbox
+            ok, reason = sandbox.available()
+            if not ok:
+                issues.append(Issue("error", "sandbox_unavailable", f"Python steps are unavailable: {reason}", node_id=n.id))
+        elif "python" in tools and not s.sandbox_url:
             issues.append(Issue("error", "sandbox_unavailable", "Python sandbox is not configured", node_id=n.id))
         if "vector_search" in tools and not kb_ids:
             issues.append(Issue("error", "kb_missing", "Vector Search needs at least one knowledge base", node_id=n.id))

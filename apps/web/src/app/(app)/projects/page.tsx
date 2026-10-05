@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { useWorkspace } from "@/lib/session";
 import type { Project } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export default function Projects() {
   const { workspace } = useWorkspace();
@@ -20,7 +21,7 @@ export default function Projects() {
   const [busy, setBusy] = useState(false);
   async function create() {
     setBusy(true); setErr(null);
-    try { const p = await api<Project>(`/workspaces/${workspace!.id}/projects`, { body: form }); router.push(`/projects/${p.id}`); }
+    try { const p = await api<Project>(`/workspaces/${workspace!.id}/projects`, { body: form }); router.push(routes.project(p.id)); }
     catch (e) { setErr(e); setBusy(false); }
   }
   return (
@@ -34,7 +35,7 @@ export default function Projects() {
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {q.data.map((p) => (
-              <Link key={p.id} href={`/projects/${p.id}`} className="rounded-lg border border-line bg-paper p-4 hover:border-ink-300">
+              <Link key={p.id} href={routes.project(p.id)} className="rounded-lg border border-line bg-paper p-4 hover:border-ink-300">
                 <div className="font-medium text-ink-900">{p.name}</div>
                 {p.description && <p className="mt-1 line-clamp-2 text-sm text-ink-400">{p.description}</p>}
                 <div className="mt-3 flex gap-4 text-xs text-ink-400">

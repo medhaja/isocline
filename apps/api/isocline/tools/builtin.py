@@ -32,6 +32,8 @@ class WebSearchTool(Tool):
         n = int(args.get("max_results") or 5)
         s = get_settings()
         prov = s.search_provider
+        if prov == "auto":  # desktop default: a configured Tavily/Brave key wins, otherwise the built-in local search
+            prov = "tavily" if await ctx.get_secret("tavily") else "brave" if await ctx.get_secret("brave") else "searxng"
         async with httpx.AsyncClient(timeout=20) as c:
             if prov == "tavily":
                 key = await ctx.get_secret("tavily")
@@ -51,10 +53,19 @@ class WebSearchTool(Tool):
                 results = [{"title": x.get("title", ""), "url": x.get("url", ""), "snippet": x.get("description", "")}
                            for x in (r.json().get("web") or {}).get("results", [])]
             else:
-                r = await c.get(f"{s.searxng_url.rstrip('/')}/search", params={"q": q, "format": "json"})
+                try:
+                    r = await c.get(f"{s.searxng_url.rstrip('/')}/search", params={"q": q, "format": "json"})
+                except httpx.TransportError as e:
+                    raise ToolError("Web search is unavailable: the search service is not running "
+                                    "(desktop app: see logs/search.log; server: start the SearXNG profile)") from e
                 r.raise_for_status()
+                body = r.json()
                 results = [{"title": x.get("title", ""), "url": x.get("url", ""), "snippet": x.get("content", "")}
-                           for x in r.json().get("results", [])]
+                           for x in body.get("results", [])]
+                failed = [str(e[0]) for e in body.get("unresponsive_engines") or [] if e]
+                if not results and failed:  # every engine failed: say so instead of "no results"
+                    raise ToolError(f"Web search failed: no search engine responded ({', '.join(failed)}). "
+                                    "Check the internet connection, or add a Tavily or Brave key.")
         return {"query": q, "results": results[:n]}
 
 
@@ -127,6 +138,12 @@ class PythonTool(Tool):
         code = str(args.get("code") or "")
         if not code.strip():
             raise ToolError("code is required")
+        if s.desktop:  # Isocline Desktop: an AppContainer sandbox on this computer (isocline.desktop.sandbox)
+            from isocline.desktop import sandbox
+            ok, reason = sandbox.available()
+            if not ok:
+                raise ToolError(f"Python steps are unavailable: {reason}")
+            return await sandbox.execute(code, args.get("inputs") or {}, timeout=30)
         try:
             async with httpx.AsyncClient(timeout=90) as c:
                 r = await c.post(f"{s.sandbox_url.rstrip('/')}/execute",

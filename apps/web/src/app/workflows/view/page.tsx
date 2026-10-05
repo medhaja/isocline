@@ -1,7 +1,6 @@
 "use client";
 import clsx from "clsx";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,13 +18,13 @@ import { useMe } from "@/lib/session";
 import type { Issue, NodeType, Workflow, WorkflowGraph } from "@/lib/types";
 import { useRunStream } from "@/lib/useRunStream";
 import { useBuilder } from "@/store/builder";
+import { IdPage, routes } from "@/lib/routes";
 
 export default function BuilderPage() {
-  return <ReactFlowProvider><Builder /></ReactFlowProvider>;
+  return <IdPage render={(id) => <ReactFlowProvider><Builder id={id} /></ReactFlowProvider>} />;
 }
 
-function Builder() {
-  const { id } = useParams<{ id: string }>();
+function Builder({ id }: { id: string }) {
   const me = useMe();
   const qc = useQueryClient();
   const rf = useReactFlow();
@@ -203,8 +202,8 @@ function Builder() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-canvas">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-paper px-3 text-ink-700">
-        <Link href={`/projects/${wf.project_id}`} className="flex items-center gap-2 rounded p-1 hover:bg-canvas" title="Back to project"><Logo /></Link>
-        <Link href={`/projects/${wf.project_id}`} className="text-xs text-ink-400 hover:text-ink-800">{wf.project_name}</Link>
+        <Link href={routes.project(wf.project_id)} className="flex items-center gap-2 rounded p-1 hover:bg-canvas" title="Back to project"><Logo /></Link>
+        <Link href={routes.project(wf.project_id)} className="text-xs text-ink-400 hover:text-ink-800">{wf.project_name}</Link>
         <span className="text-ink-300">/</span>
         {editingName ? (
           <input autoFocus className="h-7 rounded border border-line bg-paper px-2 text-sm text-ink-900 focus:border-accent-500 focus:outline-none" defaultValue={b.name}

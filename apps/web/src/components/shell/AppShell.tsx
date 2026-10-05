@@ -10,6 +10,7 @@ import { useMe, useWorkspace } from "@/lib/session";
 import { useTheme, type ThemePref } from "@/lib/theme";
 import type { Approval, Project } from "@/lib/types";
 import { Logo } from "./AuthShell";
+import { routes } from "@/lib/routes";
 
 const NAV: { group: string; items: { href: string; label: string; icon: string; badge?: "approvals" | "alerts"}[] }[] = [
   { group: "Build", items: [
@@ -165,8 +166,8 @@ function CommandPalette({ onClose, workspaceId, nav }: { onClose: () => void; wo
   const items = useMemo(() => {
     const all = [
       ...nav.flatMap((g) => g.items.map((n) => ({ label: n.label, hint: g.group, href: n.href, icon: n.icon }))),
-      ...(projects.data || []).map((p) => ({ label: p.name, hint: "Project", href: `/projects/${p.id}`, icon: "FolderKanban" })),
-      ...((dash.data?.recent_workflows || []) as any[]).map((w) => ({ label: w.name, hint: `Workflow · ${w.project_name}`, href: `/workflows/${w.id}`, icon: "Workflow" })),
+      ...(projects.data || []).map((p) => ({ label: p.name, hint: "Project", href: routes.project(p.id), icon: "FolderKanban" })),
+      ...((dash.data?.recent_workflows || []) as any[]).map((w) => ({ label: w.name, hint: `Workflow · ${w.project_name}`, href: routes.workflow(w.id), icon: "Workflow" })),
     ];
     const s = q.toLowerCase();
     return all.filter((x) => !s || x.label.toLowerCase().includes(s) || x.hint.toLowerCase().includes(s)).slice(0, 12);

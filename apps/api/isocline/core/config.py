@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     s3_bucket: str | None = None
     max_upload_mb: int = 25
 
-    # Web search provider used by the Web Search tool: tavily | brave | searxng
+    # Web search provider used by the Web Search tool: tavily | brave | searxng | auto (key if configured, else searxng)
     search_provider: str = "searxng"
     searxng_url: str = "http://searxng:8080"
 
@@ -75,6 +75,22 @@ class Settings(BaseSettings):
     # DEVELOPMENT ONLY: execute runs/ingestion/evaluations inside the API process instead of Celery.
     # No crash recovery or horizontal scaling. Never enable in production.
     inline_worker: bool = False  # exposes the "local_test" provider; disable in production
+
+    # Deployment mode. "server" is the Docker Compose stack (PostgreSQL + Redis + Celery). "desktop" is the single-process
+    # Windows/macOS/Linux app: SQLite, in-process workers and scheduler, and the static web UI served by the API.
+    # The desktop launcher (isocline.desktop.launcher) sets this and the paths below; it is not meant for servers.
+    mode: str = "server"  # server | desktop
+    desktop_concurrency: int = 4  # parallel workflow runs/ingestions in desktop mode
+    ui_dir: str | None = None  # directory with the exported web UI (desktop mode serves it at /)
+
+    @property
+    def desktop(self) -> bool:
+        return self.mode == "desktop"
+
+    @property
+    def in_process_worker(self) -> bool:
+        """Runs, ingestion and evaluations execute inside the API process (desktop mode, or the dev inline worker)."""
+        return self.desktop or self.inline_worker
 
 
 @lru_cache

@@ -1,0 +1,22 @@
+# SearXNG settings for Isocline Desktop's local web search (written to <data>/searxng/settings.yml on first start;
+# edit that copy to change engines). Reference: https://docs.searxng.org/admin/settings/
+use_default_settings:
+  engines:
+    keep_only: [duckduckgo, bing, brave, startpage, mojeek, qwant, wikipedia]
+general:
+  instance_name: isocline-local
+  enable_metrics: false
+server:
+  secret_key: "__SECRET__"
+  limiter: false
+  public_instance: false
+  image_proxy: false
+search:
+  safe_search: 0
+  formats: [json]
+valkey:
+  url: false
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 10.0
+  pool_connections: 20

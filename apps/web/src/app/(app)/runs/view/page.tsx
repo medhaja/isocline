@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ReactFlowProvider } from "@xyflow/react";
 import { useState } from "react";
 import { useRunData } from "@/components/builder/BottomPanel";
@@ -13,11 +13,15 @@ import { Button, Code, Spinner, StatusBadge, Tabs, toast } from "@/components/ui
 import { api, errorMessage } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { useRunStream } from "@/lib/useRunStream";
+import { IdPage, routes } from "@/lib/routes";
 
 type Tab = "output" | "trace" | "harness" | "lineage" | "tokens" | "logs" | "input";
 
-export default function RunPage() {
-  const { id } = useParams<{ id: string }>();
+export default function Page() {
+  return <IdPage render={(id) => <RunPage id={id} />} />;
+}
+
+function RunPage({ id }: { id: string }) {
   const router = useRouter();
   const stream = useRunStream(id);
   const { run, nodeRuns, refetch } = useRunData(id, stream.events);
@@ -32,21 +36,21 @@ export default function RunPage() {
   const active = ["queued", "running", "waiting", "resuming"].includes(run.status);
 
   async function replay(nodeId: string) {
-    try { const r = await api<{ run_id: string }>(`/runs/${id}/replay`, { body: { node_id: nodeId, use_current_draft: false } }); router.push(`/runs/${r.run_id}`); }
+    try { const r = await api<{ run_id: string }>(`/runs/${id}/replay`, { body: { node_id: nodeId, use_current_draft: false } }); router.push(routes.run(r.run_id)); }
     catch (e) { toast(errorMessage(e), "error"); }
   }
   async function cancel() { try { await api(`/runs/${id}/cancel`, { method: "POST" }); refetch(); } catch (e) { toast(errorMessage(e), "error"); } }
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader back={{ href: `/projects/${run.project_id}?tab=runs`, label: "Runs" }}
+      <PageHeader back={{ href: routes.project(run.project_id, "runs"), label: "Runs" }}
         title={<span className="flex items-center gap-3">{run.workflow_name} <StatusBadge status={run.status} /></span>}
-        description={<>Started {ago(run.created_at)} by {run.trigger}{run.parent_run_id && <> · re-run of <Link className="text-accent-600" href={`/runs/${run.parent_run_id}`}>an earlier run</Link> from node {graph.nodes.find((n) => n.id === run.replay_from_node_id)?.name}</>}
+        description={<>Started {ago(run.created_at)} by {run.trigger}{run.parent_run_id && <> · re-run of <Link className="text-accent-600" href={routes.run(run.parent_run_id)}>an earlier run</Link> from node {graph.nodes.find((n) => n.id === run.replay_from_node_id)?.name}</>}
           {run.workflow_version_id ? " · published version" : " · draft"}{run.recovery_attempts ? ` · resumed after ${run.recovery_attempts} worker interruption(s)` : ""}</>}
         actions={<>
           {active && <Button icon="Square" onClick={cancel}>Stop run</Button>}
           {run.parent_run_id && <Link href={`/runs/compare?a=${run.parent_run_id}&b=${run.id}`}><Button icon="GitCompare">Compare with original</Button></Link>}
-          <Link href={`/workflows/${run.workflow_id}`}><Button icon="Pencil">Open workflow</Button></Link>
+          <Link href={routes.workflow(run.workflow_id)}><Button icon="Pencil">Open workflow</Button></Link>
         </>} />
       <div className="border-b border-line bg-paper px-8 py-4"><RunSummary run={run} /></div>
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_400px]">
@@ -68,7 +72,7 @@ export default function RunPage() {
               {tab === "harness" && <HarnessTab runId={id} active={active} nodeName={(nid) => graph.nodes.find((n) => n.id === nid)?.name || nid} />}
               {tab === "lineage" && <LineageTab runId={id} output={run.output?.result} />}
               {!!run.replays?.length && <div className="text-sm"><div className="mb-1 text-xs font-medium text-ink-700">Re-runs</div>
-                {run.replays.map((r) => <Link key={r.id} href={`/runs/${r.id}`} className="mr-3 text-accent-600 hover:underline">{ago(r.created_at)} ({r.status})</Link>)}</div>}
+                {run.replays.map((r) => <Link key={r.id} href={routes.run(r.id)} className="mr-3 text-accent-600 hover:underline">{ago(r.created_at)} ({r.status})</Link>)}</div>}
             </div>
           </div>
         </div>
