@@ -108,6 +108,7 @@ if ((Test-Path $Stamp) -and ((Get-Content $Stamp -Raw).Trim() -eq $Want)) {
   Write-Host "   up to date"
 } else {
   if (Test-Path $Rt) { Remove-Item -Recurse -Force $Rt }
+  New-Item -ItemType Directory -Force (Join-Path $Root "build") | Out-Null  # a fresh checkout has no build folder yet
   $ProgressPreference = "SilentlyContinue"
   [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
   $Embed = Join-Path $Root "build\python-$SANDBOX_PYTHON-embed-amd64.zip"
