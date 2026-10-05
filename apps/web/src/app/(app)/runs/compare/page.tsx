@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/AppShell";
 import { Badge, Code, Spinner, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { ago, fmtCost, fmtMs, fmtTokens, toText } from "@/lib/format";
+import { routes } from "@/lib/routes";
 
 function Compare() {
   const p = useSearchParams();
@@ -19,7 +20,7 @@ function Compare() {
   const rows = d.nodes.filter((r: any) => !onlyChanged || r.output_changed || r.config_changed || r.a?.status !== r.b?.status);
   const Side = ({ run, label }: { run: any; label: string }) => (
     <div className="rounded-lg border border-line bg-paper p-4 text-sm">
-      <div className="flex items-center justify-between"><Link href={`/runs/${run.id}`} className="font-medium text-accent-600">{label}: {ago(run.created_at)}</Link><StatusBadge status={run.status} /></div>
+      <div className="flex items-center justify-between"><Link href={routes.run(run.id)} className="font-medium text-accent-600">{label}: {ago(run.created_at)}</Link><StatusBadge status={run.status} /></div>
       <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-ink-600"><span>{fmtMs(run.duration_ms)}</span><span>{fmtTokens(run.input_tokens + run.output_tokens)} tokens</span><span>{fmtCost(run.cost_usd)}</span><span>{run.llm_calls} calls</span></div>
     </div>
   );

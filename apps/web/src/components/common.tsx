@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { ago, fmtCost, fmtMs, fmtTokens } from "@/lib/format";
 import { useWorkspace } from "@/lib/session";
 import type { Credential, ModelInfo, ModelRef, ProviderInfo, Run } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function RunsTable({ runs, showWorkflow = true, compareFrom }: { runs: Run[]; showWorkflow?: boolean; compareFrom?: (id: string) => void }) {
   return (
@@ -26,9 +27,9 @@ export function RunsTable({ runs, showWorkflow = true, compareFrom }: { runs: Ru
         <tbody>
           {runs.map((r) => (
             <tr key={r.id} className="border-b border-line last:border-0 hover:bg-canvas/60">
-              <td className="px-4 py-2"><Link href={`/runs/${r.id}`} className="inline-flex items-center gap-2"><StatusBadge status={r.status} /></Link></td>
-              {showWorkflow && <td className="px-4 py-2"><Link href={`/runs/${r.id}`} className="font-medium text-ink-900 hover:text-accent-600">{r.workflow_name}</Link></td>}
-              <td className="px-4 py-2 text-ink-600"><Link href={`/runs/${r.id}`}>{ago(r.created_at)}</Link></td>
+              <td className="px-4 py-2"><Link href={routes.run(r.id)} className="inline-flex items-center gap-2"><StatusBadge status={r.status} /></Link></td>
+              {showWorkflow && <td className="px-4 py-2"><Link href={routes.run(r.id)} className="font-medium text-ink-900 hover:text-accent-600">{r.workflow_name}</Link></td>}
+              <td className="px-4 py-2 text-ink-600"><Link href={routes.run(r.id)}>{ago(r.created_at)}</Link></td>
               <td className="px-4 py-2 tabular-nums text-ink-600">{fmtMs(r.duration_ms)}</td>
               <td className="px-4 py-2 text-right tabular-nums text-ink-600">{fmtTokens(r.input_tokens + r.output_tokens)}</td>
               <td className="px-4 py-2 text-right tabular-nums text-ink-600">{fmtCost(r.cost_usd)}</td>

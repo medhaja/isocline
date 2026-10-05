@@ -65,7 +65,12 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             log.error("seed_failed", error=str(e))
     loop_task = None
-    if s.inline_worker and s.env != "test":
+    if s.desktop and s.env != "test":
+        import asyncio
+
+        from isocline.desktop.runtime import scheduler
+        loop_task = asyncio.create_task(scheduler())  # recovery + what Celery beat does on the server
+    elif s.inline_worker and s.env != "test":
         import asyncio
 
         async def dev_scheduler():
@@ -87,6 +92,9 @@ async def lifespan(app: FastAPI):
     yield
     if loop_task:
         loop_task.cancel()
+    if s.in_process_worker:
+        from isocline.services.dispatch import drain
+        await drain(timeout=5.0)  # anything still running is resumed on the next start
     await dbs.engine().dispose()
 
 
@@ -159,7 +167,8 @@ def create_app() -> FastAPI:
     @app.get(f"{api}/meta", tags=["meta"])
     async def meta():
         """Installation facts the web UI needs before sign-in."""
-        return {"name": "Isocline", "version": __version__, "edition": "oss",
+        return {"name": "Isocline", "version": __version__, "edition": "desktop" if s.desktop else "oss",
+                "python_sandbox": (not s.desktop) or __import__("isocline.desktop.sandbox", fromlist=["available"]).available()[0],
                 "test_provider": s.enable_test_provider, "signup": "open" if s.allow_signup else "first_account_only"}
 
     @app.get("/healthz", include_in_schema=False)
@@ -171,6 +180,10 @@ def create_app() -> FastAPI:
         async with dbs.sessionmaker()() as db:
             await db.execute(text("select 1"))
         return {"ok": True}
+
+    if s.desktop and s.ui_dir:
+        from isocline.desktop.ui import mount
+        mount(app, s.ui_dir)  # registered last: API routes always win
 
     setup_tracing(app)
     return app

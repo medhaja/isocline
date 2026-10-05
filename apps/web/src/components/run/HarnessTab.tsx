@@ -7,6 +7,7 @@ import PlanView from "@/components/builder/PlanView";
 import { Badge, Button, Code, Icon, Input, Spinner, StatusBadge, toast } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { ago } from "@/lib/format";
+import { routes } from "@/lib/routes";
 
 function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
@@ -24,7 +25,7 @@ export default function HarnessTab({ runId, active, nodeName }: { runId: string;
   if (q.isLoading || !q.data) return <Spinner />;
   const h = q.data;
   async function resume(cp: string) {
-    try { const r = await api<{ run_id: string }>(`/runs/${runId}/resume`, { body: { checkpoint_id: cp } }); router.push(`/runs/${r.run_id}`); }
+    try { const r = await api<{ run_id: string }>(`/runs/${runId}/resume`, { body: { checkpoint_id: cp } }); router.push(routes.run(r.run_id)); }
     catch (e) { toast(errorMessage(e), "error"); }
   }
   async function compensate() {
@@ -91,7 +92,7 @@ export default function HarnessTab({ runId, active, nodeName }: { runId: string;
                 {w.resume_at && <div>Resumes at {new Date(w.resume_at).toLocaleString()}</div>}
                 {w.timeout_at && <div>Times out at {new Date(w.timeout_at).toLocaleString()} → {w.timeout_action}</div>}
                 {w.event_name && <div>Event <code className="font-mono">{w.event_name}</code>{w.correlation_key ? ` · key ${w.correlation_key}` : ""}</div>}
-                {w.child_run_id && <div>Sub-workflow run <Link className="text-accent-600" href={`/runs/${w.child_run_id}`}>{w.child_run_id.slice(0, 8)}</Link></div>}
+                {w.child_run_id && <div>Sub-workflow run <Link className="text-accent-600" href={routes.run(w.child_run_id)}>{w.child_run_id.slice(0, 8)}</Link></div>}
                 {w.callback_path && w.status === "waiting" && (
                   <div className="flex gap-1"><Input readOnly className="h-7 font-mono text-2xs" value={`${window.location.origin}${w.callback_path}`} />
                     <Button size="sm" icon="Copy" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}${w.callback_path}`); toast("Callback URL copied"); }} /></div>)}

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Badge, Button, Code, Empty, Icon, Input, Select, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
 import { ago } from "@/lib/format";
+import { routes } from "@/lib/routes";
 
 const KIND_ICON: Record<string, string> = { csv: "Sheet", json: "Braces", pdf: "FileText", image: "Image", text: "FileText", report: "ScrollText", code: "FileCode", zip: "FileArchive", table: "Table" };
 
@@ -43,7 +44,7 @@ export function Artifacts({ projectId }: { projectId: string }) {
               <div className="text-xs text-ink-500">{detail.data.mime} · sha256 {detail.data.checksum.slice(0, 12)}…</div></div>
             <div className="flex gap-2">
               <a href={`/api/v1/artifacts/${sel}/download`}><Button size="sm" icon="Download">Download</Button></a>
-              {detail.data.run_id && <Link href={`/runs/${detail.data.run_id}`}><Button size="sm" variant="ghost">Open producing run</Button></Link>}
+              {detail.data.run_id && <Link href={routes.run(detail.data.run_id)}><Button size="sm" variant="ghost">Open producing run</Button></Link>}
             </div>
             {preview.data?.type === "image" && <img src={preview.data.data_url} alt={detail.data.name} className="max-h-64 rounded-md border border-line" />}
             {preview.data?.type === "text" && <Code value={preview.data.text} maxH="max-h-64" />}
@@ -64,7 +65,7 @@ export function Artifacts({ projectId }: { projectId: string }) {
             <div>
               <div className="mb-1 text-xs font-semibold">Produced by / consumed by</div>
               <p className="text-xs text-ink-600">{detail.data.node_key ? `Node ${detail.data.node_key}` : "Upload"}{detail.data.transformation ? ` via ${detail.data.transformation}` : ""}</p>
-              {detail.data.consumers.map((c: any, i: number) => <p key={i} className="text-xs text-ink-600">→ {c.node_key} in <Link className="text-accent-600" href={`/runs/${c.run_id}`}>run {c.run_id.slice(0, 8)}</Link></p>)}
+              {detail.data.consumers.map((c: any, i: number) => <p key={i} className="text-xs text-ink-600">→ {c.node_key} in <Link className="text-accent-600" href={routes.run(c.run_id)}>run {c.run_id.slice(0, 8)}</Link></p>)}
             </div>
           </div>
         )}

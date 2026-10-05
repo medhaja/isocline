@@ -7,6 +7,7 @@ import { ModelPicker, useProviders } from "@/components/common";
 import { Badge, Button, Dialog, ErrorBox, Field, Icon, Input, Textarea } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { ModelRef, Workflow } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 type Mode = "blank" | "template" | "ai" | "import";
 interface Template { id: string; name: string; category: string; description: string; node_count: number; agents: string[] }
@@ -42,7 +43,7 @@ export default function NewWorkflowDialog({ open, onClose, projectId, initialMod
     setBusy(true); setError(null);
     try {
       const wf = await api<Workflow>(`/projects/${projectId}/workflows`, { body });
-      router.push(`/workflows/${wf.id}`);
+      router.push(routes.workflow(wf.id));
     } catch (e) { setError(e); setBusy(false); }
   }
 
@@ -57,7 +58,7 @@ export default function NewWorkflowDialog({ open, onClose, projectId, initialMod
     try {
       const doc = JSON.parse(await f.text());
       const wf = await api<Workflow & { issues: any[] }>(`/projects/${projectId}/workflows/import`, { body: { document: doc } });
-      router.push(`/workflows/${wf.id}`);
+      router.push(routes.workflow(wf.id));
     } catch (e) { setError(e instanceof SyntaxError ? new Error("That file isn't valid JSON") : e); setBusy(false); }
   }
 

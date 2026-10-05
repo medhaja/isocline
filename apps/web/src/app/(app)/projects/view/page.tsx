@@ -1,7 +1,6 @@
 "use client";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Suspense } from "react";
 import { PageHeader } from "@/components/shell/AppShell";
 import { Artifacts } from "@/components/project/Artifacts";
 import { Experiments } from "@/components/project/Experiments";
@@ -13,11 +12,11 @@ import { ProjectRuns, Workflows } from "@/components/project/Workflows";
 import { Spinner, Tabs } from "@/components/ui";
 import { api } from "@/lib/api";
 import type { Project } from "@/lib/types";
+import { IdPage, routes } from "@/lib/routes";
 
 type Tab = "workflows" | "runs" | "evaluations" | "experiments" | "artifacts" | "knowledge" | "triggers" | "monitoring";
 
-function ProjectPage() {
-  const { id } = useParams<{ id: string }>();
+function ProjectPage({ id }: { id: string }) {
   const params = useSearchParams();
   const router = useRouter();
   const tab = (params.get("tab") as Tab) || "workflows";
@@ -28,7 +27,7 @@ function ProjectPage() {
     <>
       <PageHeader title={p.data.name} description={p.data.description} back={{ href: "/projects", label: "Projects" }} />
       <div className="bg-paper px-8">
-        <Tabs<Tab> value={tab} onChange={(t) => router.replace(`/projects/${id}?tab=${t}`)}
+        <Tabs<Tab> value={tab} onChange={(t) => router.replace(routes.project(id, t))}
           tabs={[{ id: "workflows", label: "Workflows" }, { id: "runs", label: "Runs" }, { id: "evaluations", label: "Evaluations" },
             { id: "experiments", label: "Experiments" }, { id: "artifacts", label: "Artifacts" }, { id: "knowledge", label: "Knowledge" },
             { id: "triggers", label: "Triggers" }, { id: "monitoring", label: "Monitoring" }]} />
@@ -47,4 +46,4 @@ function ProjectPage() {
   );
 }
 
-export default function Page() { return <Suspense><ProjectPage /></Suspense>; }
+export default function Page() { return <IdPage render={(id) => <ProjectPage id={id} />} />; }

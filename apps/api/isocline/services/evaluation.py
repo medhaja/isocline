@@ -37,7 +37,7 @@ def enqueue_evaluation(eval_run_id: str) -> None:
         _eval_dispatcher(str(eval_run_id))
         return
     from isocline.services.dispatch import _inline
-    if _inline(lambda: execute_evaluation(str(eval_run_id), executor_factory=True)):
+    if _inline(lambda: execute_evaluation(str(eval_run_id), executor_factory=True), key=f"eval:{eval_run_id}"):
         return
     from isocline.worker.tasks import run_evaluation
     run_evaluation.delay(str(eval_run_id))

@@ -7,6 +7,7 @@ import { Badge, Button, Dialog, Empty, ErrorBox, Field, Icon, Input, Select, Spi
 import { api, errorMessage } from "@/lib/api";
 import { fmtCost } from "@/lib/format";
 import type { ModelRef, Workflow } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function Experiments({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
@@ -57,7 +58,7 @@ function ExperimentCard({ exp, onStarted }: { exp: any; onStarted: () => void })
                 <td className="px-3 py-2 tabular-nums">{fmtCost(m.avg_cost_usd)}</td><td className="px-3 py-2 tabular-nums">{m.p95_latency_s != null ? `${m.p95_latency_s}s` : "—"}</td>
                 <td className="px-3 py-2 tabular-nums">{pct(m.schema_compliance)}</td><td className="px-3 py-2 tabular-nums">{pct(m.tool_success)}</td>
                 <td className="px-3 py-2 tabular-nums">{pct(m.failure_rate)}</td><td className="px-3 py-2 tabular-nums">{m.avg_tokens?.toLocaleString() ?? "—"}</td>
-                <td className="px-3 py-2">{v.evaluation_run_id && <Link className="text-xs text-accent-600" href={`/evaluations/${v.evaluation_run_id}`}>cases</Link>}</td>
+                <td className="px-3 py-2">{v.evaluation_run_id && <Link className="text-xs text-accent-600" href={routes.evaluation(v.evaluation_run_id)}>cases</Link>}</td>
               </tr>);
           })}</tbody>
         </table>

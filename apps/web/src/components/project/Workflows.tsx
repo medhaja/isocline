@@ -9,6 +9,7 @@ import { Button, Empty, Icon, Select, Spinner, StatusBadge, toast } from "@/comp
 import { api, errorMessage } from "@/lib/api";
 import { ago } from "@/lib/format";
 import type { Run, Workflow } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function Workflows({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
@@ -53,7 +54,7 @@ export function Workflows({ projectId }: { projectId: string }) {
             <tbody>
               {q.data.map((w) => (
                 <tr key={w.id} className="border-b border-line last:border-0 hover:bg-canvas/60">
-                  <td className="px-4 py-2.5"><Link className="font-medium text-ink-900 hover:text-accent-600" href={`/workflows/${w.id}`}>{w.name}</Link>
+                  <td className="px-4 py-2.5"><Link className="font-medium text-ink-900 hover:text-accent-600" href={routes.workflow(w.id)}>{w.name}</Link>
                     {w.latest_version > 0 && <span className="ml-2 text-xs text-ink-400">v{w.latest_version}</span>}</td>
                   <td className="px-4 py-2.5"><StatusBadge status={w.status} /></td>
                   <td className="px-4 py-2.5 tabular-nums text-ink-600">{w.node_count}</td>

@@ -7,6 +7,7 @@ import { Badge, Button, Dialog, Empty, ErrorBox, Field, Input, Select, Spinner, 
 import { api, errorMessage } from "@/lib/api";
 import { ago, fmtCost } from "@/lib/format";
 import type { Workflow } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 interface Dataset { id: string; name: string; description: string; case_count: number }
 interface Case { id?: string; name: string; input: any; expected: any; evaluators: any[] }
@@ -61,7 +62,7 @@ export function Evaluations({ projectId }: { projectId: string }) {
               <thead className="border-b border-line text-left text-xs text-ink-400"><tr><th className="px-4 py-2 font-medium">Workflow</th><th className="px-4 py-2 font-medium">Dataset</th><th className="px-4 py-2 font-medium">Status</th><th className="px-4 py-2 font-medium">Pass rate</th><th className="px-4 py-2 font-medium">Cost (est.)</th><th className="px-4 py-2 font-medium">Started</th></tr></thead>
               <tbody>{runs.data.map((e) => (
                 <tr key={e.id} className="border-b border-line last:border-0 hover:bg-canvas/60">
-                  <td className="px-4 py-2"><Link className="font-medium hover:text-accent-600" href={`/evaluations/${e.id}`}>{e.workflow_name}</Link></td>
+                  <td className="px-4 py-2"><Link className="font-medium hover:text-accent-600" href={routes.evaluation(e.id)}>{e.workflow_name}</Link></td>
                   <td className="px-4 py-2 text-ink-600">{e.dataset_name}</td><td className="px-4 py-2"><StatusBadge status={e.status} /></td>
                   <td className="px-4 py-2 tabular-nums">{e.summary?.pass_rate !== undefined ? `${Math.round(e.summary.pass_rate * 100)}% (${e.summary.passed}/${e.summary.cases})` : "—"}</td>
                   <td className="px-4 py-2 tabular-nums text-ink-600">{fmtCost(e.summary?.total_cost_usd)}</td>

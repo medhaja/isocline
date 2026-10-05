@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { ago, fmtCost, fmtTokens } from "@/lib/format";
 import { useWorkspace } from "@/lib/session";
 import type { Project } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export default function Dashboard() {
   const { workspace } = useWorkspace();
@@ -53,7 +54,7 @@ export default function Dashboard() {
                   <ul className="divide-y divide-line rounded-lg border border-line bg-paper">
                     {d.recent_workflows.length === 0 && <li className="px-4 py-3 text-sm text-ink-400">No workflows yet.</li>}
                     {d.recent_workflows.map((w: any) => (
-                      <li key={w.id}><Link href={`/workflows/${w.id}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-canvas/60">
+                      <li key={w.id}><Link href={routes.workflow(w.id)} className="flex items-center justify-between px-4 py-2.5 hover:bg-canvas/60">
                         <span><span className="block text-sm font-medium">{w.name}</span><span className="text-xs text-ink-400">{w.project_name} · edited {ago(w.updated_at)}</span></span>
                         <Icon name="ChevronRight" className="text-ink-300" />
                       </Link></li>
@@ -65,7 +66,7 @@ export default function Dashboard() {
                     <h2 className="mb-3 text-sm font-semibold">Failing workflows</h2>
                     <ul className="divide-y divide-line rounded-lg border border-line bg-paper">
                       {d.failed_workflows.map((w: any) => (
-                        <li key={w.id}><Link href={`/workflows/${w.id}`} className="flex justify-between px-4 py-2.5 text-sm hover:bg-canvas/60">
+                        <li key={w.id}><Link href={routes.workflow(w.id)} className="flex justify-between px-4 py-2.5 text-sm hover:bg-canvas/60">
                           <span>{w.name}</span><span className="text-state-failed">{w.failures} failed</span></Link></li>
                       ))}
                     </ul>

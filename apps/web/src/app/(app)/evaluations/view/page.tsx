@@ -1,15 +1,18 @@
 "use client";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useState } from "react";
 import { PageHeader } from "@/components/shell/AppShell";
 import { Badge, Code, Spinner, Stat, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
 import { fmtCost, fmtMs, fmtTokens, toText } from "@/lib/format";
+import { IdPage, routes } from "@/lib/routes";
 
-export default function EvaluationPage() {
-  const { id } = useParams<{ id: string }>();
+export default function Page() {
+  return <IdPage render={(id) => <EvaluationPage id={id} />} />;
+}
+
+function EvaluationPage({ id }: { id: string }) {
   const q = useQuery({ queryKey: ["evaluation", id], queryFn: () => api<any>(`/evaluations/${id}`), refetchInterval: (x) => (x.state.data?.status === "running" ? 2500 : false) });
   const [open, setOpen] = useState<string | null>(null);
   if (!q.data) return <div className="p-8"><Spinner /></div>;
@@ -34,7 +37,7 @@ export default function EvaluationPage() {
                   <td className="px-4 py-2 font-medium">{r.case_name || "Untitled"}</td><td className="px-4 py-2"><StatusBadge status={r.status} /></td>
                   <td className="px-4 py-2">{r.scores.map((sc: any, i: number) => <Badge key={i} tone={sc.passed ? "blue" : "warn"} className="mr-1">{sc.label || sc.type} {typeof sc.score === "number" ? sc.score.toFixed(2) : ""}</Badge>)}</td>
                   <td className="px-4 py-2 tabular-nums text-ink-600">{fmtMs(r.latency_ms)}</td><td className="px-4 py-2 tabular-nums text-ink-600">{fmtCost(r.cost_usd)}</td>
-                  <td className="px-4 py-2 text-right">{r.run_id && <Link onClick={(ev) => ev.stopPropagation()} href={`/runs/${r.run_id}`} className="text-xs text-accent-600">Open run</Link>}</td>
+                  <td className="px-4 py-2 text-right">{r.run_id && <Link onClick={(ev) => ev.stopPropagation()} href={routes.run(r.run_id)} className="text-xs text-accent-600">Open run</Link>}</td>
                 </tr>
                 {open === r.id && (
                   <tr className="border-b border-line bg-canvas/40"><td colSpan={6} className="px-4 py-3">

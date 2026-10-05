@@ -8,6 +8,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useWorkspace } from "@/lib/session";
 import type { Contract, Harness, WFNode } from "@/lib/types";
 import { useBuilder } from "@/store/builder";
+import { routes } from "@/lib/routes";
 
 const CAPS = ["vision", "tool_calling", "structured_output", "reasoning", "large_context", "coding"];
 const BUILTIN = ["Any", "Text", "Number", "Boolean", "JSON", "Table", "File", "Image", "Audio", "Video", "Document", "Message", "Message[]", "Artifact", "Error"];
@@ -312,7 +313,7 @@ export function TestsPanel({ node, workflowId }: { node: WFNode; workflowId: str
         {runId && (
           <div className="space-y-2 rounded-md border border-line p-2.5">
             <div className="flex items-center justify-between text-xs"><StatusBadge status={run.data?.status || "queued"} />
-              <Link className="text-accent-600" href={`/runs/${runId}`}>Open run</Link></div>
+              <Link className="text-accent-600" href={routes.run(runId)}>Open run</Link></div>
             {out && <Code value={out.output ?? out.error} maxH="max-h-48" />}
           </div>
         )}

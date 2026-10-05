@@ -5,7 +5,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from pgvector.sqlalchemy import Vector
+try:  # pgvector is only needed on PostgreSQL; the desktop build (SQLite) ships without it.
+    from pgvector.sqlalchemy import Vector
+except ImportError:  # pragma: no cover - exercised by the desktop build
+    Vector = None
 from sqlalchemy import (
     JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String, Text,
     UniqueConstraint, Uuid,
@@ -211,7 +214,7 @@ class DocumentChunk(Base):
     knowledge_base_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("knowledge_bases.id", ondelete="CASCADE"), index=True)
     idx: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[Any] = mapped_column(Vector(EMBED_DIM).with_variant(JSON(), "sqlite"))
+    embedding: Mapped[Any] = mapped_column(Vector(EMBED_DIM).with_variant(JSON(), "sqlite") if Vector is not None else JSON())
     meta: Mapped[dict] = mapped_column(JSONType, default=dict)
 
 

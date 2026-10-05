@@ -1,0 +1,47 @@
+# Builds the Windows desktop installer.
+#  - On every published GitHub Release: builds Isocline-Setup-<version>.exe and attaches it to the release.
+#  - Manually (Actions tab -> "Desktop app" -> Run workflow): builds it as a downloadable workflow artifact.
+name: Desktop app
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write  # attach the installer to the release
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: apps/api/requirements-desktop.txt }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue) -and -not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Build, smoke-test and package
+        shell: pwsh
+        run: packaging\desktop\build.ps1
+
+      - name: Upload installer (workflow artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Isocline-Setup-windows
+          path: dist/installer/*.exe
+          if-no-files-found: error
+
+      - name: Attach installer to the release
+        if: github.event_name == 'release'
+        shell: pwsh
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem dist\installer\*.exe).FullName --clobber

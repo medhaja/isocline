@@ -8,6 +8,7 @@ import { EventLog, OutputView, RunError, RunSummary, Timeline, UsageTable } from
 import { Button, Icon, StatusBadge, Tabs, toast } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import type { NodeRun, Run, RunEvent, WFNode } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 type Tab = "run" | "output" | "trace" | "logs" | "tokens" | "cost" | "errors";
 
@@ -61,7 +62,7 @@ export default function BottomPanel({ runId, events, graphNodes, open, setOpen, 
           { id: "tokens", label: "Tokens" }, { id: "cost", label: "Cost" }, { id: "errors", label: "Errors", count: failed.length + (run.error ? 1 : 0) || undefined }]} /></div>}
         {!open && <div className="flex-1" />}
         {run && ["queued", "running", "waiting", "resuming"].includes(run.status) && <Button size="sm" icon="Square" onClick={cancel}>Stop</Button>}
-        {run && <Link href={`/runs/${run.id}`} className="text-xs text-accent-600 hover:underline">Open run page</Link>}
+        {run && <Link href={routes.run(run.id)} className="text-xs text-accent-600 hover:underline">Open run page</Link>}
       </div>
       {open && (
         <div className="flex-1 overflow-y-auto border-t border-line px-4 py-3">
