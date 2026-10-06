@@ -2,6 +2,14 @@
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## 3.3.1
+
+### Fixed
+- Windows desktop app: Python steps failed with "python312.dll was not found" after reinstalling or upgrading
+  Isocline. The sandbox's read access to its Python runtime is now checked on every run and restored when missing,
+  instead of being remembered by file date.
+- Windows desktop app: Windows no longer shows error dialogs from sandboxed Python steps; failures appear in the run.
+
 ## 3.3.0 — first public release
 
 Isocline's first release as an open-source project (Apache-2.0). The version continues the numbering of the internal
