@@ -156,3 +156,17 @@ def test_memory_is_limited(tmp_path):
 def test_work_folder_is_removed(tmp_path):
     run("open('left.txt','w').write('x')", tmp_path)
     assert not [p for p in (tmp_path / "work").iterdir() if p.is_dir()]
+
+
+# --------------------------------------------------------------------------------------------- reinstall recovery
+def test_recovers_after_reinstall_removed_runtime_access(tmp_path):
+    """A reinstall recreates the runtime folder without the sandbox's read permission while file dates stay the same.
+    The next run must notice and grant it again (this used to fail with 'python312.dll was not found')."""
+    from isocline.desktop.sandbox import appcontainer, runner
+    rt = runner.runtime_dir()
+    sid = appcontainer.container_sid()
+    appcontainer.revoke(rt, sid)
+    assert not appcontainer.has_access(rt, sid) or appcontainer.has_access(rt, appcontainer.all_application_packages_sid())
+    r = run("import numpy\nprint('ok')", tmp_path)
+    assert r["success"] and r["stdout"].strip() == "ok", r
+    assert appcontainer.has_access(rt, sid)

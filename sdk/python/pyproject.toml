@@ -1,6 +1,6 @@
 [project]
 name = "isocline-sdk"
-version = "3.3.0"
+version = "3.3.1"
 license = { text = "Apache-2.0" }
 description = "Python SDK and CLI for the Isocline harness"
 requires-python = ">=3.10"

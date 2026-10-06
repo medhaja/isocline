@@ -73,6 +73,15 @@ FILE_ALL_ACCESS = 0x001F01FF
 
 E_ALREADY_EXISTS = 0x800700B7  # HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)
 SE_DACL_PROTECTED = 0x1000  # security descriptor control bit: the folder does not inherit permissions
+REVOKE_ACCESS = 4
+ACCESS_ALLOWED_ACE_TYPE = 0
+ACL_SIZE_INFORMATION_CLASS = 2
+# Error mode inherited by the sandboxed process: Windows must never show a dialog (e.g. "python312.dll was not
+# found") on the user's screen; failures are reported through the run instead.
+SEM_FAILCRITICALERRORS = 0x0001
+SEM_NOGPFAULTERRORBOX = 0x0002
+SEM_NOOPENFILEERRORBOX = 0x8000
+STATUS_DLL_NOT_FOUND = 0xC0000135
 
 
 # ------------------------------------------------------------------------------------------------------ structures
@@ -125,6 +134,14 @@ class TRUSTEE_W(ctypes.Structure):
                 ("TrusteeForm", ctypes.c_int), ("TrusteeType", ctypes.c_int), ("ptstrName", ctypes.c_void_p)]
 
 
+class ACL_SIZE_INFORMATION(ctypes.Structure):
+    _fields_ = [("AceCount", wt.DWORD), ("AclBytesInUse", wt.DWORD), ("AclBytesFree", wt.DWORD)]
+
+
+class ACE_HEADER(ctypes.Structure):
+    _fields_ = [("AceType", ctypes.c_ubyte), ("AceFlags", ctypes.c_ubyte), ("AceSize", wt.WORD)]
+
+
 class EXPLICIT_ACCESS_W(ctypes.Structure):
     _fields_ = [("grfAccessPermissions", wt.DWORD), ("grfAccessMode", ctypes.c_int),
                 ("grfInheritance", wt.DWORD), ("Trustee", TRUSTEE_W)]
@@ -160,6 +177,12 @@ class _Api:
         self.SetNamedSecurityInfoW = fn(adv, "SetNamedSecurityInfoW", D, wt.LPWSTR, ctypes.c_int, D, P, P, P, P)
         self.GetSecurityDescriptorControl = fn(adv, "GetSecurityDescriptorControl", B, P, ctypes.POINTER(wt.WORD),
                                                ctypes.POINTER(D))
+        self.GetAclInformation = fn(adv, "GetAclInformation", B, P, P, D, ctypes.c_int)
+        self.GetAce = fn(adv, "GetAce", B, P, D, ctypes.POINTER(P))
+        self.EqualSid = fn(adv, "EqualSid", B, P, P)
+        self.ConvertStringSidToSidW = fn(adv, "ConvertStringSidToSidW", B, wt.LPCWSTR, ctypes.POINTER(P))
+        self.SetErrorMode = fn(k32, "SetErrorMode", wt.UINT, wt.UINT)
+        self.GetErrorMode = fn(k32, "GetErrorMode", wt.UINT)
         self.LocalFree = fn(k32, "LocalFree", P, P)
         self.InitializeProcThreadAttributeList = fn(k32, "InitializeProcThreadAttributeList", B, P, D, D,
                                                     ctypes.POINTER(ctypes.c_size_t))
@@ -229,6 +252,15 @@ def remove_profile() -> None:
 
 def grant(path: Path, sid, access: int) -> None:
     """Adds an inheritable allow-ACE for the AppContainer to path (and, through inheritance, everything below it)."""
+    _set_access(path, sid, access, GRANT_ACCESS)
+
+
+def revoke(path: Path, sid) -> None:
+    """Removes the AppContainer's ACEs from path (tests use this to simulate a reinstall)."""
+    _set_access(path, sid, 0, REVOKE_ACCESS)
+
+
+def _set_access(path: Path, sid, access: int, mode: int) -> None:
     a = api()
     old_dacl, sd = ctypes.c_void_p(), ctypes.c_void_p()
     rc = a.GetNamedSecurityInfoW(str(path), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, None, None,
@@ -238,7 +270,7 @@ def grant(path: Path, sid, access: int) -> None:
     try:
         ea = EXPLICIT_ACCESS_W()
         ea.grfAccessPermissions = access
-        ea.grfAccessMode = GRANT_ACCESS
+        ea.grfAccessMode = mode
         ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT
         ea.Trustee.TrusteeForm = TRUSTEE_IS_SID
         ea.Trustee.TrusteeType = TRUSTEE_IS_UNKNOWN
@@ -254,6 +286,49 @@ def grant(path: Path, sid, access: int) -> None:
                 raise OSError(rc, f"SetNamedSecurityInfo failed for {path}")
         finally:
             a.LocalFree(new_dacl)
+    finally:
+        a.LocalFree(sd)
+
+
+_all_packages_sid: ctypes.c_void_p | None = None
+
+
+def all_application_packages_sid() -> ctypes.c_void_p:
+    """S-1-15-2-1, ALL APPLICATION PACKAGES: Windows grants it read access to system folders and Program Files."""
+    global _all_packages_sid
+    if _all_packages_sid is None:
+        s = ctypes.c_void_p()
+        _check(api().ConvertStringSidToSidW("S-1-15-2-1", ctypes.byref(s)), "ConvertStringSidToSid")
+        _all_packages_sid = s  # kept for the life of the process
+    return _all_packages_sid
+
+
+def has_access(path: Path, sid) -> bool:
+    """True if path's permissions currently allow the AppContainer in: an allow-ACE for its SID, or for ALL APPLICATION
+    PACKAGES (Program Files installs). Checked on every run, so a reinstall (which recreates the runtime folder
+    without the grant) is noticed, whatever the files' dates say."""
+    a = api()
+    dacl, sd = ctypes.c_void_p(), ctypes.c_void_p()
+    rc = a.GetNamedSecurityInfoW(str(path), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, None, None,
+                                 ctypes.byref(dacl), None, ctypes.byref(sd))
+    if rc:
+        raise OSError(rc, f"GetNamedSecurityInfo failed for {path}")
+    try:
+        if not dacl.value:
+            return False
+        info = ACL_SIZE_INFORMATION()
+        _check(a.GetAclInformation(dacl, ctypes.byref(info), ctypes.sizeof(info), ACL_SIZE_INFORMATION_CLASS),
+               "GetAclInformation")
+        wanted = [sid.value if isinstance(sid, ctypes.c_void_p) else sid, all_application_packages_sid().value]
+        for i in range(info.AceCount):
+            ace = ctypes.c_void_p()
+            if not a.GetAce(dacl, i, ctypes.byref(ace)):
+                continue
+            header = ACE_HEADER.from_address(ace.value)
+            # ACCESS_ALLOWED_ACE: header (4 bytes), access mask (4 bytes), then the SID
+            if header.AceType == ACCESS_ALLOWED_ACE_TYPE and any(a.EqualSid(ace.value + 8, w) for w in wanted):
+                return True
+        return False
     finally:
         a.LocalFree(sd)
 
@@ -291,31 +366,25 @@ def grant_tree(root: Path, sid, access: int) -> int:
 
 
 _runtime_lock = threading.Lock()
-_granted: set[str] = set()  # stamps already applied by this process
 
 
-def ensure_runtime_access(runtime_root: Path, sid, marker_dir: Path) -> None:
-    """Read/execute on the Python runtime for the AppContainer, once per installation of the runtime.
+def ensure_runtime_access(runtime_root: Path, sid) -> bool:
+    """Read/execute on the Python runtime for the AppContainer. Returns True if it had to be granted.
 
     Installing for all users (Program Files) already grants this to ALL APPLICATION PACKAGES; the default per-user
-    install does not, so Isocline adds it (the user owns that folder, no administrator rights needed). Granting
+    install does not, so Isocline adds it (the user owns that folder, no administrator rights needed). The check looks
+    at the runtime folder's actual permissions on every run: reinstalling Isocline recreates the folder without them,
+    while file dates (from the official Python download) stay identical, so a date-based marker cannot tell. Granting
     propagates to every file below, which takes a few seconds the first time."""
     with _runtime_lock:
-        exe = runtime_root / "python.exe"
-        stamp = f"v2|{runtime_root}|{exe.stat().st_mtime_ns}|{sid_string(sid)}"
-        if stamp in _granted:
-            return
-        marker = marker_dir / ".runtime-access"
+        if has_access(runtime_root, sid):
+            return False
         try:
-            if marker.read_text(encoding="utf-8") == stamp:
-                _granted.add(stamp)
-                return
-        except OSError:
-            pass
-        grant_tree(runtime_root, sid, FILE_GENERIC_READ_EXECUTE)
-        marker_dir.mkdir(parents=True, exist_ok=True)
-        marker.write_text(stamp, encoding="utf-8")
-        _granted.add(stamp)
+            grant_tree(runtime_root, sid, FILE_GENERIC_READ_EXECUTE)
+        except OSError as e:
+            raise OSError(f"Isocline could not give its Python sandbox read access to {runtime_root} ({e}). "
+                          "Reinstall Isocline for the current user, or run it once as administrator.") from e
+        return True
 
 
 # ---------------------------------------------------------------------------------------------------------- launch
@@ -343,11 +412,36 @@ def _job(cpu_seconds: float, memory_mb: int, prot: Protections):
 
 def launch(argv: list[str], work: Path, env: dict[str, str], *, runtime_root: Path, wall_seconds: float,
            cpu_seconds: float, memory_mb: int) -> Outcome:
+    sid = container_sid()
+    regranted = ensure_runtime_access(runtime_root, sid)
+    grant(work, sid, FILE_ALL_ACCESS)  # this run's folder only; other runs' folders stay unreadable
+    outcome = _launch_once(argv, work, env, sid, wall_seconds, cpu_seconds, memory_mb)
+    if outcome.exit_code == STATUS_DLL_NOT_FOUND and not regranted:
+        # The runtime became unreadable after the check (e.g. replaced while Isocline was running): grant and retry.
+        with _runtime_lock:
+            grant_tree(runtime_root, sid, FILE_GENERIC_READ_EXECUTE)
+        outcome = _launch_once(argv, work, env, sid, wall_seconds, cpu_seconds, memory_mb)
+    return outcome
+
+
+_error_mode_set = False
+
+
+def _quiet_errors() -> None:
+    """Child processes inherit the error mode: with these flags, Windows reports a missing DLL or a crash through the
+    exit code instead of a dialog on the user's screen. Also applies to Isocline itself, which never wants them."""
+    global _error_mode_set
+    if not _error_mode_set:
+        a = api()
+        a.SetErrorMode(a.GetErrorMode() | SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX)
+        _error_mode_set = True
+
+
+def _launch_once(argv: list[str], work: Path, env: dict[str, str], sid, wall_seconds: float, cpu_seconds: float,
+                 memory_mb: int) -> Outcome:
     a = api()
     prot = PROTECTIONS
-    sid = container_sid()
-    ensure_runtime_access(runtime_root, sid, work.parent)
-    grant(work, sid, FILE_ALL_ACCESS)  # this run's folder only; other runs' folders stay unreadable
+    _quiet_errors()
 
     caps = SECURITY_CAPABILITIES(AppContainerSid=sid.value, Capabilities=None, CapabilityCount=0)
     child_policy = wt.DWORD(PROCESS_CREATION_CHILD_PROCESS_RESTRICTED)
