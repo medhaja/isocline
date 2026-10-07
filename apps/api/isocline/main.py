@@ -64,6 +64,12 @@ async def lifespan(app: FastAPI):
                 await bootstrap_admin(db)
         except Exception as e:
             log.error("seed_failed", error=str(e))
+    prices_task = None
+    if s.env != "test" and s.model_prices_url:
+        import asyncio
+
+        from isocline.services.model_prices import refresh_loop
+        prices_task = asyncio.create_task(refresh_loop())  # current model prices, refreshed daily
     loop_task = None
     if s.desktop and s.env != "test":
         import asyncio
@@ -90,6 +96,8 @@ async def lifespan(app: FastAPI):
                 await asyncio.sleep(5)
         loop_task = asyncio.create_task(dev_scheduler())
     yield
+    if prices_task:
+        prices_task.cancel()
     if loop_task:
         loop_task.cancel()
     if s.in_process_worker:

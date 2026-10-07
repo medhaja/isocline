@@ -2,6 +2,25 @@
 
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## 3.3.2
+
+### Changed
+- Model prices are current: Isocline loads the community-maintained LiteLLM price list on start and daily, so new models
+  (for example gpt-5.6-terra) are priced as soon as they are published. Costs, budgets and preflight use these prices.
+  Prices an administrator sets (PUT /pricing) are never overwritten. `ISOCLINE_MODEL_PRICES_URL=""` turns fetching off.
+- The model picker lists only models your key can use and, for hosted providers, only those with a known price, shown
+  as "$ in / $ out per 1M tokens". Models that are not available are flagged instead of offered. Free-text model ids
+  remain for Ollama and custom OpenAI-compatible endpoints. AUTO routing still picks only from the curated catalog.
+
+### Fixed
+- Windows desktop app: run durations and times were off by the local UTC offset (5 h 30 min in India), because SQLite
+  returned timestamps without a time zone. All timestamps are now stored and returned as UTC.
+- Run costs showed $0.00 for models missing from the shipped price table.
+
+### Upgrade notes
+- Migration 0003 adds `model_pricing.source`. Prices an administrator set before this release are treated as catalog
+  prices and may be updated by the price list; set them again once to keep them fixed.
+
 ## 3.3.1
 
 ### Fixed

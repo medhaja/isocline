@@ -62,6 +62,17 @@ export function useModels(provider: string | undefined, credentialId?: string | 
   });
 }
 
+function fmtPrice(n: number) {
+  return n === 0 ? "0" : n < 1 ? n.toFixed(n < 0.1 ? 3 : 2).replace(/0+$/, "") : String(+n.toFixed(2));
+}
+
+/** " · $2 in / $12 out per 1M tokens", " · free" for local models, "" when the price is unknown. */
+function priceLabel(p: ModelInfo["pricing"]) {
+  if (!p) return "";
+  if (p.input_per_mtok === 0 && p.output_per_mtok === 0) return " · free";
+  return ` · $${fmtPrice(p.input_per_mtok)} in / $${fmtPrice(p.output_per_mtok)} out per 1M tokens`;
+}
+
 /** Provider → credential → model. Only lists providers that exist on this server; flags unconfigured ones. */
 export function ModelPicker({ value, onChange, compact, allowAuto }: { value: ModelRef; onChange: (v: ModelRef) => void; compact?: boolean; allowAuto?: boolean }) {
   const providers = useProviders();
@@ -70,6 +81,8 @@ export function ModelPicker({ value, onChange, compact, allowAuto }: { value: Mo
   const provCreds = (creds.data || []).filter((c) => c.provider === value.provider);
   const current = providers.data?.find((p) => p.id === value.provider);
   const known = models.data?.models.some((m) => m.id === value.model);
+  // Free-text model ids only where the server cannot know the list: local Ollama and custom OpenAI-compatible endpoints.
+  const customIds = value.provider === "ollama" || value.provider === "openai_compatible";
   return (
     <div className={compact ? "grid grid-cols-2 gap-2" : "space-y-2"}>
       <Select aria-label="Provider" value={value.provider} onChange={(e) => onChange(e.target.value === "auto" ? { provider: "auto", model: "auto" } : { provider: e.target.value, model: "", credential_id: null })}>
@@ -83,17 +96,22 @@ export function ModelPicker({ value, onChange, compact, allowAuto }: { value: Mo
         <div className="space-y-1">
           {models.isLoading ? <div className="flex h-9 items-center gap-2 text-xs text-ink-400"><Spinner /> Loading models…</div> : (
             <>
-              <Select aria-label="Model" value={known || !value.model ? value.model : "__custom"} onChange={(e) => onChange({ ...value, model: e.target.value === "__custom" ? value.model || "" : e.target.value })}>
+              <Select aria-label="Model" value={known || !value.model || !customIds ? value.model : "__custom"} onChange={(e) => onChange({ ...value, model: e.target.value === "__custom" ? value.model || "" : e.target.value })}>
                 <option value="">Choose model…</option>
                 {models.data?.models.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}{m.pricing ? ` · $${m.pricing.input_per_mtok}/$${m.pricing.output_per_mtok} per 1M` : ""}</option>
+                  <option key={m.id} value={m.id}>{m.name}{priceLabel(m.pricing)}</option>
                 ))}
-                <option value="__custom">Other model id…</option>
+                {!known && value.model && !customIds && <option value={value.model}>{value.model} (not available with this key)</option>}
+                {customIds && <option value="__custom">Other model id…</option>}
               </Select>
-              {(!known && value.model !== "") || (models.data && models.data.models.length === 0) ? (
+              {customIds && ((!known && value.model !== "") || (models.data && models.data.models.length === 0)) ? (
                 <input aria-label="Model id" className="h-8 w-full rounded-md border border-line px-2 font-mono text-xs" placeholder="model id, e.g. llama3.1:8b"
                   value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value.trim() })} />
               ) : null}
+              {!known && value.model && !customIds && models.data && models.data.models.length > 0 && (
+                <p className="flex items-center gap-1 text-xs text-warn"><Icon name="TriangleAlert" size={12} />
+                  {value.model} is not offered for this key or has no known price. Choose a listed model.</p>
+              )}
             </>
           )}
           {!compact && provCreds.length > 1 && (
@@ -107,7 +125,7 @@ export function ModelPicker({ value, onChange, compact, allowAuto }: { value: Mo
               No {current.name} key in this workspace. <Link href="/providers" className="underline">Add one</Link></p>
           )}
           {current?.is_test && <Badge tone="warn">Test provider — deterministic, not an AI model</Badge>}
-          {models.data?.warning && current?.configured && <p className="text-xs text-ink-400">{models.data.warning}</p>}
+          {models.data?.warning && (current?.configured || models.data.models.length === 0) && <p className="text-xs text-ink-400">{models.data.warning}</p>}
         </div>
       )}
     </div>
