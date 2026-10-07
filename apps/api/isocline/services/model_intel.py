@@ -62,7 +62,7 @@ async def load_candidates(db: AsyncSession, workspace_id) -> list[Candidate]:
         if r.input_per_mtok is not None:
             pricing = {"input_per_mtok": r.input_per_mtok, "output_per_mtok": r.output_per_mtok, "cached_input_per_mtok": r.cached_input_per_mtok}
         out.append(Candidate(r.provider, r.model, dict(r.capabilities or {}), r.context_window, pricing, has,
-                             metrics.get((r.provider, r.model), {})))
+                             metrics.get((r.provider, r.model), {}), curated=(r.source or "catalog") != "feed"))
     return out
 
 

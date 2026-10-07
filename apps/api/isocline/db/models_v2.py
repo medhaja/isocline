@@ -9,10 +9,10 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from isocline.db.models import Base, JSONType, TimestampMixin, new_id, utcnow
+from isocline.db.models import Base, JSONType, TimestampMixin, new_id, utcnow, UTCDateTime
 
 
 def _fk(target: str, ondelete: str = "CASCADE", nullable: bool = False, index: bool = True):
@@ -29,7 +29,7 @@ class CustomType(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(64))
     description: Mapped[str] = mapped_column(Text, default="")
     json_schema: Mapped[dict] = mapped_column(JSONType)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class AgentContract(Base, TimestampMixin):
@@ -108,7 +108,7 @@ class Policy(Base, TimestampMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class PolicyRule(Base, TimestampMixin):
@@ -180,7 +180,7 @@ class CacheEntry(Base, TimestampMixin):
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     hits: Mapped[int] = mapped_column(Integer, default=0)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
 
 
 class CompensationAction(Base, TimestampMixin):
@@ -194,7 +194,7 @@ class CompensationAction(Base, TimestampMixin):
     compensation: Mapped[dict] = mapped_column(JSONType)  # resolved compensating action
     status: Mapped[str] = mapped_column(String(16), default="available")  # available | attempted | succeeded | failed | skipped
     result: Mapped[Any] = mapped_column(JSONType, nullable=True)
-    attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attempted_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     attempted_by: Mapped[str | None] = mapped_column(String(64), nullable=True)  # user id or "policy"
 
 
@@ -278,7 +278,7 @@ class DriftEvent(Base, TimestampMixin):
     message: Mapped[str] = mapped_column(Text)
     primary_node_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     day: Mapped[str] = mapped_column(String(10))  # dedupe key YYYY-MM-DD
-    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 # ======================================================================= triggers & durable waits
@@ -294,8 +294,8 @@ class Trigger(Base, TimestampMixin):
     public_id: Mapped[str | None] = mapped_column(String(48), unique=True, nullable=True)  # webhook path id
     secret_encrypted: Mapped[bytes | None] = mapped_column(nullable=True)
     config: Mapped[dict] = mapped_column(JSONType, default=dict)  # cron, timezone, auth, payload schema, event name, input mapping
-    next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
@@ -323,15 +323,15 @@ class WaitState(Base, TimestampMixin):
     scope: Mapped[str] = mapped_column(String(200), default="")
     kind: Mapped[str] = mapped_column(String(16))  # approval | timer | webhook | event | subworkflow
     status: Mapped[str] = mapped_column(String(16), default="waiting")  # waiting | resumed | timed_out | cancelled
-    resume_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    timeout_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resume_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    timeout_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
     timeout_action: Mapped[str] = mapped_column(String(16), default="edge")  # edge | fail | continue
     callback_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     event_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     correlation_key: Mapped[str | None] = mapped_column(String(300), nullable=True)
     child_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     payload: Mapped[Any] = mapped_column(JSONType, nullable=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 # ======================================================================= goal mode
@@ -363,7 +363,7 @@ class McpServer(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(16), default="unsynced")
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     rate_limit_per_minute: Mapped[int] = mapped_column(Integer, default=60)
-    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    synced_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
 
 
 class WorkspaceQuota(Base, TimestampMixin):
@@ -385,6 +385,6 @@ class PersonalAccessToken(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200))
     prefix: Mapped[str] = mapped_column(String(20))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

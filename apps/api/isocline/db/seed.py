@@ -22,7 +22,7 @@ async def seed(db: AsyncSession) -> None:
     existing = {(p, m) for p, m in (await db.execute(select(ModelPricing.provider, ModelPricing.model))).all()}
     for row in json.loads(CATALOG.read_text())["models"]:
         if (row["provider"], row["model"]) not in existing:
-            db.add(ModelPricing(**row))
+            db.add(ModelPricing(**row, source="catalog"))
     for tid, t in AGENT_TEMPLATES.items():
         if await db.get(AgentTemplate, tid) is None:
             db.add(AgentTemplate(id=tid, name=t["name"], description=t["description"], icon=t.get("icon", ""),

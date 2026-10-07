@@ -80,7 +80,13 @@ async def _catalog(db: AsyncSession, provider: str) -> dict[str, ModelPricing]:
 @router.get("/providers/{provider_id}/models")
 async def list_models(provider_id: str, workspace_id: str | None = None, credential_id: str | None = None,
                       user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
-    """Model catalog: live from the provider when a credential is available, merged with server-side metadata."""
+    """Models this workspace can use right now: the provider's live list for its key, with current prices.
+
+    Hosted providers (OpenAI, Anthropic, Google, OpenRouter) list only models that the key can access AND that have a
+    price, so cost estimates and budgets always work; models retired by the provider disappear on their own. Local
+    providers (Ollama) are free. A custom OpenAI-compatible endpoint lists what it serves, priced when an
+    administrator has set prices. Without a key there is nothing to list."""
+    from isocline.services import model_prices
     cls = provider_classes().get(provider_id)
     if cls is None:
         raise not_found("Provider")
@@ -96,32 +102,39 @@ async def list_models(provider_id: str, workspace_id: str | None = None, credent
     if api_key is None and base_url is None and not credential_id:
         from isocline.providers.env_credentials import provider_env
         api_key, base_url = provider_env(provider_id)
-    catalog = await _catalog(db, provider_id)
+    prices = model_prices.status()
+    out = {"provider": provider_id, "source": "provider", "warning": None, "models": [],
+           "prices_updated_at": prices["updated_at"]}
+    if cls.requires_key and not api_key:
+        out.update(source="none", warning=f"Add a {cls.name} key to see the models available to you")
+        return out
     prov = get_provider(provider_id, api_key, base_url)
-    live, source, warning = [], "catalog", None
-    if api_key or not cls.requires_key:
-        try:
-            if base_url and provider_id not in ("ollama", "openai_compatible"):
-                await check_url(base_url)  # hosted providers must never be pointed at internal addresses
-            live = await asyncio.wait_for(prov.list_models(), timeout=8)
-            source = "provider"
-        except Exception as e:
-            warning = f"Could not list models from {cls.name}: {redact_text(str(e))[:200]}"
-    else:
-        warning = f"Add a {cls.name} credential to load its live model list"
-    models: dict[str, dict] = {}
+    try:
+        if base_url and provider_id not in ("ollama", "openai_compatible"):
+            await check_url(base_url)  # hosted providers must never be pointed at internal addresses
+        live = await asyncio.wait_for(prov.list_models(), timeout=8)
+    except Exception as e:
+        out.update(source="none", warning=f"Could not load models from {cls.name}: {redact_text(str(e))[:200]}")
+        return out
+    catalog = await _catalog(db, provider_id)
+    free = provider_id in model_prices.FREE_PROVIDERS
+    priced_only = provider_id in model_prices.FEED_PROVIDERS
+    hidden = 0
     for m in live:
         meta = catalog.get(m.id)
-        models[m.id] = {"id": m.id, "name": (meta.display_name if meta and meta.display_name else m.name),
-                        "context_window": (meta.context_window if meta else None) or m.context_window,
-                        "supported_params": prov.supported_params(m.id, meta.capabilities if meta else None),
-                        "pricing": _price(meta), "source": "provider"}
-    for mid, meta in catalog.items():
-        if mid not in models:
-            models[mid] = {"id": mid, "name": meta.display_name or mid, "context_window": meta.context_window,
-                           "supported_params": prov.supported_params(mid, meta.capabilities), "pricing": _price(meta),
-                           "source": "catalog"}
-    return {"provider": provider_id, "source": source, "warning": warning, "models": sorted(models.values(), key=lambda x: x["id"])}
+        pricing = {"input_per_mtok": 0.0, "output_per_mtok": 0.0, "cached_input_per_mtok": 0.0, "is_estimate": False} if free else _price(meta)
+        if priced_only and pricing is None:
+            hidden += 1  # embeddings, audio, images, or a model with no known price yet
+            continue
+        out["models"].append({"id": m.id, "name": (meta.display_name if meta and meta.display_name and meta.display_name != m.id else m.name) or m.id,
+                              "context_window": (meta.context_window if meta else None) or m.context_window,
+                              "supported_params": prov.supported_params(m.id, meta.capabilities if meta else None),
+                              "pricing": pricing, "source": "provider"})
+    out["models"].sort(key=lambda x: x["id"])
+    if priced_only and not out["models"]:
+        out["warning"] = (f"{cls.name} returned {hidden} models but none have a known price yet"
+                          + (f" (price list: {prices['error']})" if prices["error"] else ""))
+    return out
 
 
 def _price(meta: ModelPricing | None) -> dict | None:
@@ -225,7 +238,7 @@ async def list_pricing(provider: str | None = None, user: User = Depends(current
         q = q.where(ModelPricing.provider == provider)
     rows = (await db.execute(q.order_by(ModelPricing.provider, ModelPricing.model))).scalars().all()
     return [dump(r, "id", "provider", "model", "display_name", "context_window", "input_per_mtok", "output_per_mtok",
-                 "cached_input_per_mtok", "capabilities", "active", "updated_at") for r in rows]
+                 "cached_input_per_mtok", "capabilities", "active", "source", "updated_at") for r in rows]
 
 
 @router.put("/pricing")
@@ -238,8 +251,9 @@ async def upsert_pricing(rows: list[PricingRow], user: User = Depends(current_us
         if existing:
             for k, v in row.model_dump().items():
                 setattr(existing, k, v)
+            existing.source = "admin"  # the live price feed never overwrites an administrator's prices
         else:
-            db.add(ModelPricing(**row.model_dump()))
+            db.add(ModelPricing(**row.model_dump(), source="admin"))
     await audit(db, "pricing_updated", user_id=user.id, data={"rows": len(rows)})
     await db.commit()
     return {"updated": len(rows)}

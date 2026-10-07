@@ -23,6 +23,9 @@ class Candidate:
     pricing: dict | None
     has_credential: bool
     metrics: dict = field(default_factory=dict)  # calls, success_rate, p50_latency_ms, eval_score, recent_error_rate
+    # AUTO routing only picks from the curated catalog (shipped or administrator-set models). Models added by the live
+    # price feed (hundreds, including dated snapshots and legacy models) are priced and selectable, never auto-picked.
+    curated: bool = True
 
 
 @dataclass
@@ -72,6 +75,7 @@ def route(candidates: list[Candidate], *, required: list[str], est_input_tokens:
     max_cost, max_lat, min_eval = routing.get("max_cost_per_call"), routing.get("max_latency_seconds"), routing.get("min_eval_score")
     need_ctx = max(min_context or 0, int((est_input_tokens + est_output_tokens) * 1.1))
     scored, rejected = [], []
+    candidates = [c for c in candidates if c.curated]
     for c in candidates:
         ident = f"{c.provider}/{c.model}"
         why: list[str] = []

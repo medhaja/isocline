@@ -11,7 +11,7 @@ except ImportError:  # pragma: no cover - exercised by the desktop build
     Vector = None
 from sqlalchemy import (
     JSON, BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, LargeBinary, String, Text,
-    UniqueConstraint, Uuid,
+    UniqueConstraint, Uuid, TypeDecorator,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -20,6 +20,28 @@ from isocline.core.config import get_settings
 
 JSONType = JSON().with_variant(JSONB(), "postgresql")
 EMBED_DIM = get_settings().embedding_dim
+
+
+class UTCDateTime(TypeDecorator):
+    """Timezone-aware UTC timestamps on every database.
+
+    PostgreSQL stores timestamptz natively. SQLite (the desktop app) has no time zones and returns naive values, which
+    the API then sent without an offset, so the browser read UTC times as local time (in India every duration came
+    out 5 h 30 min too long). This type stores UTC and always returns aware UTC datetimes."""
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and value.tzinfo is not None:
+            value = value.astimezone(timezone.utc)
+            if dialect.name == "sqlite":
+                value = value.replace(tzinfo=None)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None and value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value
 
 
 def utcnow() -> datetime:
@@ -35,7 +57,7 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, nullable=False)
 
 
 # ---------------------------------------------------------------- identity & tenancy
@@ -55,8 +77,8 @@ class AuthToken(Base, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(32))  # password_reset | email_verify
     token_hash: Mapped[str] = mapped_column(String(128), unique=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime())
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
 class Workspace(Base, TimestampMixin):
@@ -96,7 +118,7 @@ class Workflow(Base, TimestampMixin):
     revision: Mapped[int] = mapped_column(Integer, default=1)  # optimistic concurrency for autosave
     latest_version: Mapped[int] = mapped_column(Integer, default=0)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class WorkflowVersion(Base, TimestampMixin):
@@ -117,7 +139,7 @@ class WorkflowMemory(Base):
     workflow_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workflows.id", ondelete="CASCADE"), index=True)
     key: Mapped[str] = mapped_column(String(200))
     value: Mapped[Any] = mapped_column(JSONType)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 # ---------------------------------------------------------------- agents
@@ -140,7 +162,7 @@ class Agent(Base, TimestampMixin):
     config: Mapped[dict] = mapped_column(JSONType)  # AgentConfig
     slug: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # stable, human-readable reference
     draft_contract: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 # ---------------------------------------------------------------- providers & secrets
@@ -167,7 +189,9 @@ class ModelPricing(Base):
     cached_input_per_mtok: Mapped[float | None] = mapped_column(Float)
     capabilities: Mapped[dict] = mapped_column(JSONType, default=dict)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    # Who owns the prices: "catalog" (shipped), "feed" (live price list) or "admin" (never overwritten by the feed).
+    source: Mapped[str] = mapped_column(String(16), default="catalog", server_default="catalog")
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow)
 
 
 class ProviderCredential(Base, TimestampMixin):
@@ -241,9 +265,9 @@ class Run(Base, TimestampMixin):
     replay_from_node_id: Mapped[str | None] = mapped_column(String(64))
     idempotency_key: Mapped[str | None] = mapped_column(String(200))
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    heartbeat_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     worker_id: Mapped[str | None] = mapped_column(String(200))
     recovery_attempts: Mapped[int] = mapped_column(Integer, default=0)
     cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -286,8 +310,8 @@ class NodeRun(Base):
     cached_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     reasoning_summary: Mapped[str | None] = mapped_column(Text)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     # V2: cache + routing observability
     cache_status: Mapped[str | None] = mapped_column(String(16), nullable=True)  # hit | miss | stored | bypass
@@ -305,8 +329,8 @@ class ToolRun(Base):
     output: Mapped[Any] = mapped_column(JSONType, nullable=True)  # sanitized
     success: Mapped[bool] = mapped_column(Boolean, default=False)
     error: Mapped[str | None] = mapped_column(Text)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     duration_ms: Mapped[int | None] = mapped_column(Integer)
 
 
@@ -318,7 +342,7 @@ class RunEvent(Base):
     seq: Mapped[int] = mapped_column(Integer)
     type: Mapped[str] = mapped_column(String(32))
     data: Mapped[dict] = mapped_column(JSONType, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
 
 
 class Approval(Base, TimestampMixin):
@@ -335,7 +359,7 @@ class Approval(Base, TimestampMixin):
     edited_content: Mapped[Any] = mapped_column(JSONType, nullable=True)
     comment: Mapped[str | None] = mapped_column(Text)
     decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     # V2: approvals raised by policies/recovery (not only HITL nodes)
     kind: Mapped[str] = mapped_column(String(24), default="node")  # node | tool_call | run_budget | recovery
     subject_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -370,7 +394,7 @@ class EvaluationRun(Base, TimestampMixin):
     workflow_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("workflow_versions.id"))
     status: Mapped[str] = mapped_column(String(16), default="running")
     summary: Mapped[dict] = mapped_column(JSONType, default=dict)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     # V2: experiments/optimizer/CI evaluate an explicit graph (candidate) instead of the draft/version
     graph: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)

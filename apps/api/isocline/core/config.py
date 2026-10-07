@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     # Deployment mode. "server" is the Docker Compose stack (PostgreSQL + Redis + Celery). "desktop" is the single-process
     # Windows/macOS/Linux app: SQLite, in-process workers and scheduler, and the static web UI served by the API.
     # The desktop launcher (isocline.desktop.launcher) sets this and the paths below; it is not meant for servers.
+    # Current model prices (see isocline.services.model_prices). Empty disables fetching (air-gapped installs).
+    model_prices_url: str = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+    model_prices_refresh_hours: int = 24
+
     mode: str = "server"  # server | desktop
     desktop_concurrency: int = 4  # parallel workflow runs/ingestions in desktop mode
     ui_dir: str | None = None  # directory with the exported web UI (desktop mode serves it at /)
